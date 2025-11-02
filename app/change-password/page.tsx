@@ -10,9 +10,13 @@ export default function ChangePasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
+    // クライアントサイドでのみ実行
+    if (typeof window === 'undefined') return;
+    
     const user = getCurrentUser();
     if (!user) {
       router.push('/login');
@@ -26,6 +30,7 @@ export default function ChangePasswordPage() {
     }
     
     setCurrentUser(user);
+    setIsLoading(false);
   }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -63,7 +68,7 @@ export default function ChangePasswordPage() {
     }
   };
 
-  if (!currentUser) {
+  if (isLoading || !currentUser) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <p className="text-gray-600">読み込み中...</p>
