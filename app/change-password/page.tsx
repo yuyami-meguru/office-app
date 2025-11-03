@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCurrentUser, changePassword } from '@/lib/userManagerDB';
+import AuthGuard from '@/components/AuthGuard';
 
 export default function ChangePasswordPage() {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -10,12 +11,15 @@ export default function ChangePasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    // クライアントサイドでのみ実行
-    if (typeof window === 'undefined') return;
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
     
     const user = getCurrentUser();
     if (!user) {
@@ -30,8 +34,7 @@ export default function ChangePasswordPage() {
     }
     
     setCurrentUser(user);
-    setIsLoading(false);
-  }, [router]);
+  }, [isMounted, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,7 +71,7 @@ export default function ChangePasswordPage() {
     }
   };
 
-  if (isLoading || !currentUser) {
+  if (!isMounted || !currentUser) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <p className="text-gray-600">読み込み中...</p>
