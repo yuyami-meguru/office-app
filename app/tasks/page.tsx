@@ -13,6 +13,8 @@ import {
   type TaskPriority
 } from '@/lib/tasksDB';
 
+export const dynamic = 'force-dynamic';
+
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
 

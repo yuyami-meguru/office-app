@@ -5,6 +5,8 @@ import AuthGuard from '@/components/AuthGuard';
 import Header from '@/components/Header';
 import { getUsers, addUser, deleteUser, getCurrentUser, isAdmin, resetPassword, type User, type UserRole } from '@/lib/userManagerDB';
 
+export const dynamic = 'force-dynamic';
+
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);

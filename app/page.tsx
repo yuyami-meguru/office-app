@@ -4,6 +4,8 @@ import Link from 'next/link';
 import AuthGuard from '@/components/AuthGuard';
 import Header from '@/components/Header';
 
+export const dynamic = 'force-dynamic';
+
 export default function Home() {
   return (
     <AuthGuard>

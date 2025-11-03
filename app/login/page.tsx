@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { authenticateUser, setCurrentUser, initializeUsers } from '@/lib/userManagerDB';
 
+export const dynamic = 'force-dynamic';
+
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');

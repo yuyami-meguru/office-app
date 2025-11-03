@@ -10,6 +10,8 @@ import {
   type Event 
 } from '@/lib/eventsDB';
 
+export const dynamic = 'force-dynamic';
+
 export default function SchedulePage() {
   const [events, setEvents] = useState<Event[]>([]);
 

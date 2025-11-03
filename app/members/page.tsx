@@ -17,6 +17,8 @@ import {
 
 const ROLES = ['マネージャー', 'リーダー', 'メンバー', 'アシスタント'];
 
+export const dynamic = 'force-dynamic';
+
 export default function MembersPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
