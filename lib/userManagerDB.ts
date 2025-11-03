@@ -82,24 +82,36 @@ export async function authenticateUser(username: string, password: string): Prom
 // 現在ログイン中のユーザーを保存
 export function setCurrentUser(user: User) {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-  localStorage.setItem('isAuthenticated', 'true');
+  try {
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+    localStorage.setItem('isAuthenticated', 'true');
+  } catch (e) {
+    // ビルド時など、localStorageが使えない場合は何もしない
+  }
 }
 
 // 現在ログイン中のユーザーを取得
 export function getCurrentUser(): User | null {
   if (typeof window === 'undefined') return null;
   
-  const userJson = localStorage.getItem(CURRENT_USER_KEY);
-  if (!userJson) return null;
-  return JSON.parse(userJson);
+  try {
+    const userJson = localStorage.getItem(CURRENT_USER_KEY);
+    if (!userJson) return null;
+    return JSON.parse(userJson);
+  } catch (e) {
+    return null;
+  }
 }
 
 // ログアウト
 export function logout() {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(CURRENT_USER_KEY);
-  localStorage.removeItem('isAuthenticated');
+  try {
+    localStorage.removeItem(CURRENT_USER_KEY);
+    localStorage.removeItem('isAuthenticated');
+  } catch (e) {
+    // エラーを無視
+  }
 }
 
 // 新しいユーザーを追加（管理者のみ）

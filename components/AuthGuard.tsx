@@ -9,14 +9,21 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // ログイン状態をチェック
-    const authStatus = localStorage.getItem('isAuthenticated');
+    // クライアントサイドでのみ実行
+    if (typeof window === 'undefined') return;
     
-    if (authStatus === 'true') {
-      setIsAuthenticated(true);
-      setIsLoading(false);
-    } else {
-      // ログインしていない場合はログインページへリダイレクト
+    // ログイン状態をチェック
+    try {
+      const authStatus = localStorage.getItem('isAuthenticated');
+      
+      if (authStatus === 'true') {
+        setIsAuthenticated(true);
+        setIsLoading(false);
+      } else {
+        // ログインしていない場合はログインページへリダイレクト
+        router.push('/login');
+      }
+    } catch (e) {
       router.push('/login');
     }
   }, [router]);
