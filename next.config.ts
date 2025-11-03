@@ -2,10 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // 静的最適化を無効化してクライアントサイドレンダリングを優先
-  experimental: {
-    // すべてのページでクライアントサイドレンダリングを強制
-  },
+  // 静的生成を無効化
+  output: 'standalone',
 };
 
 export default nextConfig;

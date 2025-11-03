@@ -7,6 +7,7 @@ import AuthGuard from '@/components/AuthGuard';
 
 // 動的レンダリングを強制
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default function ChangePasswordPage() {
   const [currentPassword, setCurrentPassword] = useState('');
