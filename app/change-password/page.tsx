@@ -74,18 +74,16 @@ export default function ChangePasswordPage() {
     }
   };
 
-  if (!isMounted || !currentUser) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-600">読み込み中...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-red-50 to-pink-50 flex items-center justify-center px-4">
-      <div className="max-w-md w-full">
-        <div className="bg-white rounded-2xl shadow-xl p-8 border-2 border-orange-200">
+    <AuthGuard>
+      {!isMounted || !currentUser ? (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <p className="text-gray-600">読み込み中...</p>
+        </div>
+      ) : (
+        <div className="min-h-screen bg-gradient-to-br from-orange-50 via-red-50 to-pink-50 flex items-center justify-center px-4">
+          <div className="max-w-md w-full">
+            <div className="bg-white rounded-2xl shadow-xl p-8 border-2 border-orange-200">
           {/* タイトル */}
           <div className="text-center mb-6">
             <div className="inline-block px-4 py-2 bg-orange-100 rounded-lg mb-4">
@@ -175,9 +173,11 @@ export default function ChangePasswordPage() {
               <li>• 変更後は新しいパスワードで再ログインが必要です</li>
             </ul>
           </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </AuthGuard>
   );
 }
 
