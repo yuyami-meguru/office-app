@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { getCurrentUser, changePassword } from '@/lib/userManagerDB';
 import AuthGuard from '@/components/AuthGuard';
 
+// 動的レンダリングを強制
+export const dynamic = 'force-dynamic';
+
 export default function ChangePasswordPage() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
