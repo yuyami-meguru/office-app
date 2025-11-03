@@ -14,7 +14,6 @@ import {
 } from '@/lib/tasksDB';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);

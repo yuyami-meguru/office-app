@@ -6,7 +6,6 @@ import Header from '@/components/Header';
 import { getUsers, addUser, deleteUser, getCurrentUser, isAdmin, resetPassword, type User, type UserRole } from '@/lib/userManagerDB';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);

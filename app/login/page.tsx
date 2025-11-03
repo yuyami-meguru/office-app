@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { authenticateUser, setCurrentUser, initializeUsers } from '@/lib/userManagerDB';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
