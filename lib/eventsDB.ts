@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { getCurrentOfficeId } from './userManagerDB';
 
 export type Event = {
   id: number;
@@ -12,9 +13,12 @@ export type Event = {
 
 // 全イベントを取得
 export async function getEvents(): Promise<Event[]> {
+  const officeId = getCurrentOfficeId();
+  if (!officeId) return [];
   const { data, error } = await supabase
     .from('events')
     .select('*')
+    .eq('office_id', officeId)
     .order('date', { ascending: true });
 
   if (error) {
@@ -27,9 +31,21 @@ export async function getEvents(): Promise<Event[]> {
 
 // イベントを追加
 export async function addEvent(event: Omit<Event, 'id'>): Promise<Event> {
+  const officeId = getCurrentOfficeId();
+  if (!officeId) throw new Error('事務所が選択されていません');
   const { data, error } = await supabase
     .from('events')
-    .insert([event])
+    .insert([
+      {
+        office_id: officeId,
+        title: event.title,
+        date: event.date,
+        time: event.time,
+        location: event.location,
+        attendees: event.attendees,
+        notes: event.notes,
+      },
+    ])
     .select()
     .single();
 

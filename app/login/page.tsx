@@ -7,6 +7,7 @@ import { authenticateUser, setCurrentUser, initializeUsers } from '@/lib/userMan
 export const dynamic = 'force-dynamic';
 
 export default function LoginPage() {
+  const [officeCode, setOfficeCode] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -19,8 +20,11 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const user = await authenticateUser(username, password);
+    if (!officeCode) {
+      setError('事務所コードを入力してください');
+      return;
+    }
+    const user = await authenticateUser(officeCode, username, password);
     
     if (user) {
       // ログイン成功
@@ -62,6 +66,22 @@ export default function LoginPage() {
 
           {/* ログインフォーム */}
           <form onSubmit={handleLogin} className="space-y-5">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                事務所コード
+              </label>
+              <input
+                type="text"
+                value={officeCode}
+                onChange={(e) => {
+                  setOfficeCode(e.target.value.toUpperCase());
+                  setError('');
+                }}
+                className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                placeholder="例: DEMO2025"
+                required
+              />
+            </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 ユーザー名
@@ -117,6 +137,7 @@ export default function LoginPage() {
                 初回ログイン情報
               </p>
                 <div className="space-y-1 text-sm text-indigo-800">
+                  <p><strong>事務所コード:</strong> DEMO2025</p>
                   <p><strong>ユーザー名:</strong> admin</p>
                   <p><strong>パスワード:</strong> office2025</p>
                 </div>

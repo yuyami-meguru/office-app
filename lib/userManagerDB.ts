@@ -1,274 +1,301 @@
 import { supabase } from './supabase';
 
-// ユーザー管理の型定義
+// ユーザー管理（members統合）
 export type UserRole = 'admin' | 'staff';
 
 export type User = {
-  id: string;
+  id: number;
+  officeId: string;
   username: string;
   password: string;
   name: string;
-  role: UserRole;
-  email?: string;
+  role: string; // メンバーの役割（例: リーダー、メンバー）
+  userRole: UserRole; // ログイン権限の役割（admin/staff）
+  departments: string[];
+  group?: string | null;
   requirePasswordChange: boolean;
   createdAt: string;
 };
 
-// ローカルストレージのキー（現在ログイン中のユーザー用）
+type Office = {
+  id: string;
+  name: string;
+  code: string;
+};
+
 const CURRENT_USER_KEY = 'office_app_current_user';
+const CURRENT_OFFICE_KEY = 'office_app_current_office';
 
-// 初期化は不要（Supabaseに既にデータがある）
-export function initializeUsers() {
-  // Supabase使用時は何もしない
-}
-
-// 全ユーザーを取得
-export async function getUsers(): Promise<User[]> {
-  const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .order('created_at', { ascending: true });
-
-  if (error) {
-    console.error('ユーザー取得エラー:', error);
-    return [];
-  }
-
-  return (data || []).map(user => ({
-    id: user.id,
-    username: user.username,
-    password: user.password,
-    name: user.name,
-    role: user.role as UserRole,
-    email: user.email,
-    requirePasswordChange: user.require_password_change,
-    createdAt: user.created_at,
-  }));
-}
-
-// ユーザー名でユーザーを検索
-export async function findUserByUsername(username: string): Promise<User | null> {
-  const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('username', username)
-    .single();
-
-  if (error || !data) {
-    return null;
-  }
-
-  return {
-    id: data.id,
-    username: data.username,
-    password: data.password,
-    name: data.name,
-    role: data.role as UserRole,
-    email: data.email,
-    requirePasswordChange: data.require_password_change,
-    createdAt: data.created_at,
-  };
-}
-
-// ログイン認証
-export async function authenticateUser(username: string, password: string): Promise<User | null> {
-  const user = await findUserByUsername(username);
-  if (user && user.password === password) {
-    return user;
-  }
-  return null;
-}
-
-// 現在ログイン中のユーザーを保存
 export function setCurrentUser(user: User) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
     localStorage.setItem('isAuthenticated', 'true');
-  } catch (e) {
-    // ビルド時など、localStorageが使えない場合は何もしない
-  }
+  } catch {}
 }
 
-// 現在ログイン中のユーザーを取得
 export function getCurrentUser(): User | null {
   if (typeof window === 'undefined') return null;
-  
   try {
-    const userJson = localStorage.getItem(CURRENT_USER_KEY);
-    if (!userJson) return null;
-    return JSON.parse(userJson);
-  } catch (e) {
+    const json = localStorage.getItem(CURRENT_USER_KEY);
+    if (!json) return null;
+    return JSON.parse(json);
+  } catch {
     return null;
   }
 }
 
-// ログアウト
+export function setCurrentOffice(office: Office) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(CURRENT_OFFICE_KEY, JSON.stringify(office));
+  } catch {}
+}
+
+export function getCurrentOfficeId(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const json = localStorage.getItem(CURRENT_OFFICE_KEY);
+    if (!json) return null;
+    const office = JSON.parse(json) as Office;
+    return office.id;
+  } catch {
+    return null;
+  }
+}
+
 export function logout() {
   if (typeof window === 'undefined') return;
   try {
     localStorage.removeItem(CURRENT_USER_KEY);
+    localStorage.removeItem(CURRENT_OFFICE_KEY);
     localStorage.removeItem('isAuthenticated');
-  } catch (e) {
-    // エラーを無視
-  }
+  } catch {}
 }
 
-// 新しいユーザーを追加（管理者のみ）
-export async function addUser(userData: Omit<User, 'id' | 'createdAt' | 'requirePasswordChange'>): Promise<User> {
-  // ユーザー名の重複チェック
-  const existing = await findUserByUsername(userData.username);
-  if (existing) {
-    throw new Error('このユーザー名は既に使用されています');
-  }
-
-  const newUser = {
-    id: `user-${Date.now()}`,
-    username: userData.username,
-    password: userData.password,
-    name: userData.name,
-    role: userData.role,
-    email: userData.email,
-    require_password_change: true,
-    created_at: new Date().toISOString(),
-  };
-
-  const { data, error } = await supabase
-    .from('users')
-    .insert([newUser])
-    .select()
+export async function authenticateUser(
+  officeCode: string,
+  username: string,
+  password: string
+): Promise<User | null> {
+  // 事務所コード → office取得
+  const { data: office, error: officeErr } = await supabase
+    .from('offices')
+    .select('*')
+    .eq('code', officeCode)
     .single();
 
-  if (error) {
-    throw new Error('ユーザーの追加に失敗しました');
+  if (officeErr || !office) {
+    return null;
   }
 
-  return {
+  // membersから認証
+  const { data, error } = await supabase
+    .from('members')
+    .select('*')
+    .eq('office_id', office.id)
+    .eq('username', username)
+    .eq('password', password)
+    .single();
+
+  if (error || !data) return null;
+
+  const user: User = {
     id: data.id,
+    officeId: data.office_id,
     username: data.username,
     password: data.password,
     name: data.name,
-    role: data.role as UserRole,
-    email: data.email,
+    role: data.role,
+    userRole: data.user_role as UserRole,
+    departments: data.departments || [],
+    group: data.group ?? null,
+    requirePasswordChange: data.require_password_change,
+    createdAt: data.created_at,
+  };
+
+  setCurrentOffice({ id: office.id, name: office.name, code: office.code });
+  setCurrentUser(user);
+  return user;
+}
+
+export async function getUsers(): Promise<User[]> {
+  const officeId = getCurrentOfficeId();
+  if (!officeId) return [];
+  const { data, error } = await supabase
+    .from('members')
+    .select('*')
+    .eq('office_id', officeId)
+    .order('created_at', { ascending: true });
+
+  if (error) return [];
+  return (data || []).map((m: any) => ({
+    id: m.id,
+    officeId: m.office_id,
+    username: m.username,
+    password: m.password,
+    name: m.name,
+    role: m.role,
+    userRole: m.user_role as UserRole,
+    departments: m.departments || [],
+    group: m.group ?? null,
+    requirePasswordChange: m.require_password_change,
+    createdAt: m.created_at,
+  }));
+}
+
+export async function addUser(
+  userData: {
+    username: string;
+    password: string;
+    name: string;
+    role: string;
+    userRole: UserRole;
+    departments: string[];
+    group?: string | null;
+  }
+): Promise<User> {
+  const officeId = getCurrentOfficeId();
+  if (!officeId) throw new Error('事務所が選択されていません');
+
+  // 同一事務所内のユーザー名重複チェック
+  const { data: dup } = await supabase
+    .from('members')
+    .select('id')
+    .eq('office_id', officeId)
+    .eq('username', userData.username)
+    .maybeSingle();
+  if (dup) throw new Error('このユーザー名は既に使用されています');
+
+  const { data, error } = await supabase
+    .from('members')
+    .insert([
+      {
+        office_id: officeId,
+        name: userData.name,
+        role: userData.role,
+        departments: userData.departments,
+        group: userData.group ?? null,
+        username: userData.username,
+        password: userData.password,
+        user_role: userData.userRole,
+        require_password_change: true,
+      },
+    ])
+    .select()
+    .single();
+
+  if (error || !data) throw new Error('ユーザーの追加に失敗しました');
+
+  return {
+    id: data.id,
+    officeId: data.office_id,
+    username: data.username,
+    password: data.password,
+    name: data.name,
+    role: data.role,
+    userRole: data.user_role as UserRole,
+    departments: data.departments || [],
+    group: data.group ?? null,
     requirePasswordChange: data.require_password_change,
     createdAt: data.created_at,
   };
 }
 
-// ユーザーを削除（管理者のみ、自分自身は削除不可）
-export async function deleteUser(userId: string): Promise<boolean> {
+export async function deleteUser(userId: number): Promise<boolean> {
   const currentUser = getCurrentUser();
-  
-  if (currentUser?.id === userId) {
-    throw new Error('自分自身を削除することはできません');
-  }
+  if (currentUser?.id === userId) throw new Error('自分自身を削除することはできません');
 
   // 最低1人の管理者は残す
   const users = await getUsers();
-  const remainingAdmins = users.filter(u => u.role === 'admin' && u.id !== userId);
-  if (remainingAdmins.length === 0) {
-    throw new Error('最低1人の管理者が必要です');
-  }
+  const remainingAdmins = users.filter(u => u.userRole === 'admin' && u.id !== userId);
+  if (remainingAdmins.length === 0) throw new Error('最低1人の管理者が必要です');
 
-  const { error } = await supabase
-    .from('users')
-    .delete()
-    .eq('id', userId);
-
-  if (error) {
-    throw new Error('ユーザーの削除に失敗しました');
-  }
-
+  const { error } = await supabase.from('members').delete().eq('id', userId);
+  if (error) throw new Error('ユーザーの削除に失敗しました');
   return true;
 }
 
-// ユーザー情報を更新
-export async function updateUser(userId: string, updates: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User> {
-  // ユーザー名の重複チェック（自分以外）
-  if (updates.username) {
-    const duplicate = await findUserByUsername(updates.username);
-    if (duplicate && duplicate.id !== userId) {
-      throw new Error('このユーザー名は既に使用されています');
-    }
-  }
-
+export async function updateUser(
+  userId: number,
+  updates: Partial<{
+    username: string;
+    password: string;
+    name: string;
+    role: string;
+    userRole: UserRole;
+    departments: string[];
+    group?: string | null;
+    requirePasswordChange: boolean;
+  }>
+): Promise<User> {
   const dbUpdates: any = {};
-  if (updates.username) dbUpdates.username = updates.username;
-  if (updates.password) dbUpdates.password = updates.password;
-  if (updates.name) dbUpdates.name = updates.name;
-  if (updates.role) dbUpdates.role = updates.role;
-  if (updates.email !== undefined) dbUpdates.email = updates.email;
-  if (updates.requirePasswordChange !== undefined) dbUpdates.require_password_change = updates.requirePasswordChange;
+  if (updates.username !== undefined) dbUpdates.username = updates.username;
+  if (updates.password !== undefined) dbUpdates.password = updates.password;
+  if (updates.name !== undefined) dbUpdates.name = updates.name;
+  if (updates.role !== undefined) dbUpdates.role = updates.role;
+  if (updates.userRole !== undefined) dbUpdates.user_role = updates.userRole;
+  if (updates.departments !== undefined) dbUpdates.departments = updates.departments;
+  if (updates.group !== undefined) dbUpdates.group = updates.group;
+  if (updates.requirePasswordChange !== undefined)
+    dbUpdates.require_password_change = updates.requirePasswordChange;
 
   const { data, error } = await supabase
-    .from('users')
+    .from('members')
     .update(dbUpdates)
     .eq('id', userId)
     .select()
     .single();
 
-  if (error || !data) {
-    throw new Error('ユーザーの更新に失敗しました');
-  }
+  if (error || !data) throw new Error('ユーザーの更新に失敗しました');
 
-  const updatedUser = {
+  const updated: User = {
     id: data.id,
+    officeId: data.office_id,
     username: data.username,
     password: data.password,
     name: data.name,
-    role: data.role as UserRole,
-    email: data.email,
+    role: data.role,
+    userRole: data.user_role as UserRole,
+    departments: data.departments || [],
+    group: data.group ?? null,
     requirePasswordChange: data.require_password_change,
     createdAt: data.created_at,
   };
 
-  // 自分自身を更新した場合は、現在のユーザー情報も更新
   const currentUser = getCurrentUser();
-  if (currentUser?.id === userId) {
-    setCurrentUser(updatedUser);
-  }
-
-  return updatedUser;
+  if (currentUser?.id === userId) setCurrentUser(updated);
+  return updated;
 }
 
-// パスワードを変更
-export async function changePassword(userId: string, currentPassword: string, newPassword: string): Promise<boolean> {
+export async function changePassword(
+  userId: number,
+  currentPassword: string,
+  newPassword: string
+): Promise<boolean> {
   const users = await getUsers();
   const user = users.find(u => u.id === userId);
-
-  if (!user) {
-    throw new Error('ユーザーが見つかりません');
-  }
-
-  if (user.password !== currentPassword) {
-    throw new Error('現在のパスワードが正しくありません');
-  }
-
-  if (newPassword.length < 6) {
-    throw new Error('パスワードは6文字以上にしてください');
-  }
-
+  if (!user) throw new Error('ユーザーが見つかりません');
+  if (user.password !== currentPassword) throw new Error('現在のパスワードが正しくありません');
+  if (newPassword.length < 6) throw new Error('パスワードは6文字以上にしてください');
   await updateUser(userId, { password: newPassword, requirePasswordChange: false });
   return true;
 }
 
-// パスワードを再発行（管理者が実行）
-export async function resetPassword(userId: string, newPassword: string): Promise<boolean> {
-  if (!isAdmin()) {
-    throw new Error('管理者のみがパスワードを再発行できます');
-  }
-
-  if (newPassword.length < 6) {
-    throw new Error('パスワードは6文字以上にしてください');
-  }
-
+export async function resetPassword(userId: number, newPassword: string): Promise<boolean> {
+  const me = getCurrentUser();
+  if (me?.userRole !== 'admin') throw new Error('管理者のみがパスワードを再発行できます');
+  if (newPassword.length < 6) throw new Error('パスワードは6文字以上にしてください');
   await updateUser(userId, { password: newPassword, requirePasswordChange: true });
   return true;
 }
 
-// 管理者権限をチェック
 export function isAdmin(): boolean {
   const user = getCurrentUser();
-  return user?.role === 'admin';
+  return user?.userRole === 'admin';
+}
+
+export function initializeUsers() {
+  // Supabase運用では初期化処理は不要
 }
 

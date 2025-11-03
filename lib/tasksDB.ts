@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { getCurrentOfficeId } from './userManagerDB';
 
 export type TaskStatus = '未着手' | '進行中' | '完了';
 export type TaskPriority = '低' | '中' | '高';
@@ -14,9 +15,12 @@ export type Task = {
 
 // 全タスクを取得
 export async function getTasks(): Promise<Task[]> {
+  const officeId = getCurrentOfficeId();
+  if (!officeId) return [];
   const { data, error } = await supabase
     .from('tasks')
     .select('*')
+    .eq('office_id', officeId)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -36,15 +40,20 @@ export async function getTasks(): Promise<Task[]> {
 
 // タスクを追加
 export async function addTask(task: Omit<Task, 'id'>): Promise<Task> {
+  const officeId = getCurrentOfficeId();
+  if (!officeId) throw new Error('事務所が選択されていません');
   const { data, error } = await supabase
     .from('tasks')
-    .insert([{
-      title: task.title,
-      description: task.description,
-      status: task.status,
-      priority: task.priority,
-      due_date: task.dueDate,
-    }])
+    .insert([
+      {
+        office_id: officeId,
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
+        due_date: task.dueDate,
+      },
+    ])
     .select()
     .single();
 
