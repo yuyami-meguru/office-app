@@ -18,26 +18,28 @@ export default function ChangePasswordPage() {
   const router = useRouter();
 
   useEffect(() => {
+    // クライアントサイドでのみ実行
     setIsMounted(true);
-  }, []);
+    
+    // 少し遅延させてlocalStorageが確実に使える状態にする
+    const timer = setTimeout(() => {
+      const user = getCurrentUser();
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+      
+      // パスワード変更が必要ない場合はホームに戻す
+      if (!user.requirePasswordChange) {
+        router.push('/');
+        return;
+      }
+      
+      setCurrentUser(user);
+    }, 100);
 
-  useEffect(() => {
-    if (!isMounted) return;
-    
-    const user = getCurrentUser();
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-    
-    // パスワード変更が必要ない場合はホームに戻す
-    if (!user.requirePasswordChange) {
-      router.push('/');
-      return;
-    }
-    
-    setCurrentUser(user);
-  }, [isMounted, router]);
+    return () => clearTimeout(timer);
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
