@@ -13,15 +13,17 @@ export default function UsersPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [resetPasswordUserId, setResetPasswordUserId] = useState<string | null>(null);
+  const [resetPasswordUserId, setResetPasswordUserId] = useState<number | null>(null);
   const [newPasswordForReset, setNewPasswordForReset] = useState('');
   
   const [newUser, setNewUser] = useState({
     username: '',
     password: '',
     name: '',
-    role: 'staff' as UserRole,
-    email: '',
+    userRole: 'staff' as UserRole, // 権限（admin/staff）
+    role: 'メンバー', // 業務上の役割（表示用）
+    departments: [] as string[],
+    group: null as string | null,
   });
 
   useEffect(() => {
@@ -49,10 +51,18 @@ export default function UsersPage() {
     }
 
     try {
-      await addUser(newUser);
+      await addUser({
+        username: newUser.username,
+        password: newUser.password,
+        name: newUser.name,
+        role: newUser.role,
+        userRole: newUser.userRole,
+        departments: newUser.departments,
+        group: newUser.group,
+      });
       const passwordToShare = newUser.password;
       setSuccess(`ユーザーを追加しました！\n\n【本人に伝えてください】\nユーザー名: ${newUser.username}\nパスワード: ${passwordToShare}\n\n※初回ログイン時にパスワード変更が求められます`);
-      setNewUser({ username: '', password: '', name: '', role: 'staff', email: '' });
+      setNewUser({ username: '', password: '', name: '', userRole: 'staff', role: 'メンバー', departments: [], group: null });
       setIsAdding(false);
       await loadUsers();
       
@@ -62,7 +72,7 @@ export default function UsersPage() {
     }
   };
 
-  const handleDeleteUser = async (userId: string, username: string) => {
+  const handleDeleteUser = async (userId: number, username: string) => {
     if (!confirm(`${username} を削除してもよろしいですか？`)) {
       return;
     }
@@ -143,7 +153,7 @@ export default function UsersPage() {
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4">
             <p className="text-gray-600">
-              ログイン中: <strong>{currentUser?.name}</strong> ({getRoleLabel(currentUser?.role || 'staff')})
+              ログイン中: <strong>{currentUser?.name}</strong> ({getRoleLabel((currentUser?.userRole || 'staff') as UserRole)})
             </p>
             <button
               onClick={() => {
@@ -262,8 +272,8 @@ export default function UsersPage() {
                       権限
                     </label>
                     <select
-                      value={newUser.role}
-                      onChange={(e) => setNewUser({ ...newUser, role: e.target.value as UserRole })}
+                      value={newUser.userRole}
+                      onChange={(e) => setNewUser({ ...newUser, userRole: e.target.value as UserRole })}
                       className="w-full border border-gray-300 rounded px-3 py-2"
                     >
                       <option value="staff">スタッフ</option>
@@ -272,18 +282,6 @@ export default function UsersPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    メールアドレス
-                  </label>
-                  <input
-                    type="email"
-                    value={newUser.email}
-                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    placeholder="yamada@office.com"
-                  />
-                </div>
 
                 <button
                   onClick={handleAddUser}
@@ -336,8 +334,8 @@ export default function UsersPage() {
                       <div className="text-sm text-gray-900">{user.username}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getRoleBadgeColor(user.role)}`}>
-                        {getRoleLabel(user.role)}
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getRoleBadgeColor(user.userRole as UserRole)}`}>
+                        {getRoleLabel(user.userRole as UserRole)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
