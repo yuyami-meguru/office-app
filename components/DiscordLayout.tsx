@@ -11,6 +11,7 @@ import {
   type OfficeMembership,
   type Office,
 } from '@/lib/authDB';
+import { getMyMembership } from '@/lib/membersDB';
 
 interface DiscordLayoutProps {
   children: ReactNode;
@@ -19,6 +20,8 @@ interface DiscordLayoutProps {
 export default function DiscordLayout({ children }: DiscordLayoutProps) {
   const [offices, setOffices] = useState<(Office & { status: string; displayName: string })[]>([]);
   const [selectedOfficeId, setSelectedOfficeId] = useState<string | null>(null);
+  const [myDepartments, setMyDepartments] = useState<string[]>([]); // 自分の所属部署
+  const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
@@ -26,6 +29,13 @@ export default function DiscordLayout({ children }: DiscordLayoutProps) {
   useEffect(() => {
     loadOffices();
   }, []);
+
+  useEffect(() => {
+    // 事務所が変更されたら部署を再読み込み
+    if (selectedOfficeId) {
+      loadMyDepartments();
+    }
+  }, [selectedOfficeId]);
 
   const loadOffices = async () => {
     const user = getCurrentGlobalUser();
@@ -58,6 +68,24 @@ export default function DiscordLayout({ children }: DiscordLayoutProps) {
     setIsLoading(false);
   };
 
+  const loadMyDepartments = async () => {
+    const myMembership = await getMyMembership();
+    if (myMembership) {
+      setMyDepartments(myMembership.departments || []);
+      
+      // URLから部署を取得（例: /office/department/歌い手）
+      const deptMatch = pathname.match(/\/office\/department\/(.+)$/);
+      if (deptMatch) {
+        const deptFromUrl = decodeURIComponent(deptMatch[1]);
+        if (myMembership.departments.includes(deptFromUrl)) {
+          setSelectedDepartment(deptFromUrl);
+        }
+      }
+    } else {
+      setMyDepartments([]);
+    }
+  };
+
   const handleOfficeClick = (office: Office & { status: string; displayName: string }) => {
     if (office.status !== 'approved') {
       alert('この事務所はまだ承認されていません');
@@ -66,11 +94,17 @@ export default function DiscordLayout({ children }: DiscordLayoutProps) {
     
     setCurrentOffice(office);
     setSelectedOfficeId(office.id);
+    setSelectedDepartment(null);
     
     // 事務所ページに遷移
     if (pathname === '/' || !pathname.startsWith('/office')) {
       router.push('/office');
     }
+  };
+
+  const handleDepartmentClick = (department: string) => {
+    setSelectedDepartment(department);
+    router.push(`/office/department/${encodeURIComponent(department)}`);
   };
 
   const handleLogout = () => {
@@ -99,7 +133,7 @@ export default function DiscordLayout({ children }: DiscordLayoutProps) {
 
   return (
     <div className="flex h-screen bg-gray-50 text-gray-900 overflow-hidden">
-      {/* 左サイドバー: 事務所一覧（シンプルでモダン） */}
+      {/* 左サイドバー: 事務所一覧 */}
       <div className="w-20 bg-white border-r border-gray-200 flex flex-col items-center py-4 space-y-3">
         {/* ホームアイコン */}
         <button
@@ -140,12 +174,10 @@ export default function DiscordLayout({ children }: DiscordLayoutProps) {
                 </span>
               </div>
               
-              {/* 選択インジケーター */}
               {isSelected && (
                 <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-8 bg-indigo-600 rounded-r-full"></div>
               )}
               
-              {/* ツールチップ */}
               <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-gray-900 text-white px-3 py-1.5 rounded text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50 transition-opacity shadow-lg">
                 {office.name}
                 {!isApproved && ' (承認待ち)'}
@@ -154,7 +186,6 @@ export default function DiscordLayout({ children }: DiscordLayoutProps) {
           );
         })}
 
-        {/* 事務所追加ボタン */}
         <div className="w-10 h-px bg-gray-200"></div>
         <button
           onClick={() => router.push('/')}
@@ -166,7 +197,6 @@ export default function DiscordLayout({ children }: DiscordLayoutProps) {
           </svg>
         </button>
 
-        {/* ユーザー情報 */}
         <div className="mt-auto">
           <button
             onClick={handleLogout}
@@ -180,7 +210,7 @@ export default function DiscordLayout({ children }: DiscordLayoutProps) {
         </div>
       </div>
 
-      {/* 中央サイドバー: 機能メニュー（事務所選択時のみ表示） */}
+      {/* 中央サイドバー: 部署（チャンネル）リスト */}
       {selectedOfficeId && (
         <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
           {/* 事務所名 */}
@@ -190,15 +220,32 @@ export default function DiscordLayout({ children }: DiscordLayoutProps) {
             </h2>
           </div>
 
-          {/* 機能メニュー */}
+          {/* 部署（チャンネル）リスト */}
           <div className="flex-1 overflow-y-auto px-2 py-3">
-            <div className="space-y-1">
-              <NavLink href="/office" icon="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" label="ダッシュボード" />
-              <NavLink href="/members" icon="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" label="メンバー" />
-              <NavLink href="/tasks" icon="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" label="タスク" />
-              <NavLink href="/schedule" icon="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" label="スケジュール" />
-              <NavLink href="/users" icon="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" label="ユーザー管理" />
-            </div>
+            {myDepartments.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-gray-500">
+                所属している部署がありません
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <DepartmentLink
+                  department="全部署"
+                  isSelected={!selectedDepartment && pathname.startsWith('/office') && !pathname.includes('/department')}
+                  onClick={() => {
+                    setSelectedDepartment(null);
+                    router.push('/office');
+                  }}
+                />
+                {myDepartments.map((dept) => (
+                  <DepartmentLink
+                    key={dept}
+                    department={dept}
+                    isSelected={selectedDepartment === dept}
+                    onClick={() => handleDepartmentClick(dept)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* ユーザー情報 */}
@@ -224,7 +271,13 @@ export default function DiscordLayout({ children }: DiscordLayoutProps) {
       <div className="flex-1 flex flex-col bg-gray-50 overflow-hidden">
         {/* ヘッダー */}
         <div className="h-16 bg-white border-b border-gray-200 px-6 flex items-center shadow-sm">
-          {pathname === '/' && user?.name && (
+          {selectedDepartment && (
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400">#</span>
+              <h1 className="text-lg font-semibold text-gray-900">{selectedDepartment}</h1>
+            </div>
+          )}
+          {pathname === '/' && user?.name && !selectedDepartment && (
             <div>
               <h1 className="text-lg font-semibold text-gray-900">
                 {getGreeting()}、{user.name}さん
@@ -242,23 +295,26 @@ export default function DiscordLayout({ children }: DiscordLayoutProps) {
   );
 }
 
-function NavLink({ href, icon, label }: { href: string; icon: string; label: string }) {
-  const pathname = usePathname();
-  const isActive = pathname === href || (href !== '/office' && pathname.startsWith(href));
-  
+function DepartmentLink({ 
+  department, 
+  isSelected, 
+  onClick 
+}: { 
+  department: string; 
+  isSelected: boolean; 
+  onClick: () => void;
+}) {
   return (
-    <a
-      href={href}
-      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-        isActive
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-left ${
+        isSelected
           ? 'bg-indigo-50 text-indigo-700 font-medium'
           : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
       }`}
     >
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
-      </svg>
-      <span>{label}</span>
-    </a>
+      <span className="text-gray-400">#</span>
+      <span>{department}</span>
+    </button>
   );
 }
