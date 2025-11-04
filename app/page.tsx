@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import AuthGuard from '@/components/AuthGuard';
-import Header from '@/components/Header';
+import DiscordLayout from '@/components/DiscordLayout';
 import {
   getCurrentGlobalUser,
   getUserMemberships,
@@ -12,7 +12,6 @@ import {
   type OfficeMembership,
   type Office,
 } from '@/lib/authDB';
-import { setCurrentOffice } from '@/lib/authDB';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,20 +28,6 @@ export default function Home() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // 時間帯に応じた挨拶を取得
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour >= 0 && hour <= 5) {
-      return 'こんばんは';
-    } else if (hour >= 6 && hour <= 10) {
-      return 'おはようございます';
-    } else if (hour >= 11 && hour <= 17) {
-      return 'こんにちは';
-    } else {
-      return 'こんばんは';
-    }
-  };
-
   useEffect(() => {
     loadData();
   }, []);
@@ -54,7 +39,6 @@ export default function Home() {
     const membershipList = await getUserMemberships(user.id);
     setMemberships(membershipList);
 
-    // 事務所情報を取得
     const officeList = await Promise.all(
       membershipList.map(async (m) => {
         const office = await getOffice(m.officeId);
@@ -119,166 +103,94 @@ export default function Home() {
     }
   };
 
-  const handleEnterOffice = async (officeId: string) => {
-    const office = offices.find((o) => o.id === officeId);
-    if (!office) return;
-
-    const membership = memberships.find((m) => m.officeId === officeId);
-    if (!membership || membership.status !== 'approved') {
-      setError('この事務所はまだ承認されていません');
-      return;
-    }
-
-    setCurrentOffice(office);
-    window.location.href = '/office';
-  };
-
   if (isLoading) {
     return (
       <AuthGuard>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <p className="text-gray-600">読み込み中...</p>
-        </div>
+        <DiscordLayout>
+          <div className="flex items-center justify-center h-full">
+            <p className="text-gray-400">読み込み中...</p>
+          </div>
+        </DiscordLayout>
       </AuthGuard>
     );
   }
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <Header title="事務所一覧" showBackButton={false} />
-        
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          {/* 挨拶メッセージ */}
-          {(() => {
-            const user = getCurrentGlobalUser();
-            if (user && user.name) {
-              return (
-                <div className="mb-6 p-6 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl shadow-lg text-white">
-                  <h2 className="text-2xl font-bold">
-                    {getGreeting()}、{user.name}さん
-                  </h2>
-                </div>
-              );
-            }
-            return null;
-          })()}
-
+      <DiscordLayout>
+        <div className="p-6">
           {/* メッセージ */}
           {error && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            <div className="mb-4 p-4 bg-red-900/50 border border-red-700 rounded-lg text-red-200">
               {error}
             </div>
           )}
           {success && (
-            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
+            <div className="mb-4 p-4 bg-green-900/50 border border-green-700 rounded-lg text-green-200">
               {success}
             </div>
           )}
 
-          {/* 所属事務所一覧 */}
-          {offices.length > 0 ? (
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">所属事務所</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {offices.map((office) => {
-                  const membership = memberships.find((m) => m.officeId === office.id);
-                  const isApproved = membership?.status === 'approved';
-                  
-                  return (
-                    <div
-                      key={office.id}
-                      className={`bg-white rounded-xl shadow-lg p-6 border-2 ${
-                        isApproved ? 'border-green-200 hover:border-green-300' : 'border-orange-200'
-                      } transition-all`}
-                    >
-                      <h3 className="text-xl font-bold text-gray-800 mb-2">{office.name}</h3>
-                      <p className="text-sm text-gray-600 mb-2">表示名: {office.displayName}</p>
-                      <p className="text-sm text-gray-600 mb-4">コード: {office.code}</p>
-                      
-                      {membership?.status === 'approved' ? (
-                        <button
-                          onClick={() => handleEnterOffice(office.id)}
-                          className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition-all"
-                        >
-                          開く
-                        </button>
-                      ) : (
-                        <div className="w-full bg-orange-100 text-orange-700 py-2 rounded-lg text-center">
-                          承認待ち
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+          {/* 事務所がない場合 */}
+          {offices.length === 0 && (
+            <div className="text-center py-16">
+              <div className="max-w-md mx-auto">
+                <h2 className="text-2xl font-bold text-white mb-4">事務所に所属していません</h2>
+                <p className="text-gray-400 mb-8">既存の事務所に参加するか、新しく事務所を作成してください</p>
+                
+                <div className="flex gap-4 justify-center">
+                  <button
+                    onClick={() => {
+                      setShowJoinForm(!showJoinForm);
+                      setShowCreateForm(false);
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                  >
+                    事務所に参加
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowCreateForm(!showCreateForm);
+                      setShowJoinForm(false);
+                    }}
+                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                  >
+                    事務所を作成
+                  </button>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="mb-8 text-center py-12 bg-white rounded-xl shadow">
-              <p className="text-gray-600 text-lg mb-4">事務所に所属していません</p>
-              <p className="text-gray-500">既存の事務所に参加するか、新しく事務所を作成してください</p>
             </div>
           )}
 
-          {/* アクションボタン */}
-          <div className="flex gap-4 justify-center">
-            <button
-              onClick={() => {
-                setShowJoinForm(!showJoinForm);
-                setShowCreateForm(false);
-                setError('');
-                setSuccess('');
-              }}
-              className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-all font-semibold"
-            >
-              既存の事務所に参加
-            </button>
-            <button
-              onClick={() => {
-                setShowCreateForm(!showCreateForm);
-                setShowJoinForm(false);
-                setError('');
-                setSuccess('');
-              }}
-              className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-all font-semibold"
-            >
-              新しく事務所を作る
-            </button>
-          </div>
-
           {/* 参加フォーム */}
           {showJoinForm && (
-            <div className="mt-6 bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-xl font-bold mb-4">事務所に参加</h3>
+            <div className="mb-6 bg-gray-800 rounded-lg p-6 border border-gray-700">
+              <h3 className="text-xl font-bold mb-4 text-white">事務所に参加</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    事務所コード
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-300 mb-2">事務所コード</label>
                   <input
                     type="text"
                     value={joinOfficeCode}
                     onChange={(e) => setJoinOfficeCode(e.target.value.toUpperCase())}
-                    className="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="例: DEMO2025"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    事務所での表示名
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-300 mb-2">事務所での表示名</label>
                   <input
                     type="text"
                     value={joinDisplayName}
                     onChange={(e) => setJoinDisplayName(e.target.value)}
-                    className="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="この事務所での表示名を入力"
                   />
                 </div>
                 <div className="flex gap-3">
                   <button
                     onClick={handleJoinOffice}
-                    className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
                   >
                     参加リクエストを送信
                   </button>
@@ -288,7 +200,7 @@ export default function Home() {
                       setJoinOfficeCode('');
                       setJoinDisplayName('');
                     }}
-                    className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300"
+                    className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
                   >
                     キャンセル
                   </button>
@@ -299,37 +211,33 @@ export default function Home() {
 
           {/* 作成フォーム */}
           {showCreateForm && (
-            <div className="mt-6 bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-xl font-bold mb-4">新規事務所を作成</h3>
+            <div className="mb-6 bg-gray-800 rounded-lg p-6 border border-gray-700">
+              <h3 className="text-xl font-bold mb-4 text-white">新規事務所を作成</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    事務所名
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-300 mb-2">事務所名</label>
                   <input
                     type="text"
                     value={createOfficeName}
                     onChange={(e) => setCreateOfficeName(e.target.value)}
-                    className="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     placeholder="例: サンプル事務所"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    事務所コード（英数字のみ）
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-300 mb-2">事務所コード（英数字のみ）</label>
                   <input
                     type="text"
                     value={createOfficeCode}
                     onChange={(e) => setCreateOfficeCode(e.target.value.toUpperCase())}
-                    className="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     placeholder="例: OFFICE2025"
                   />
                 </div>
                 <div className="flex gap-3">
                   <button
                     onClick={handleCreateOffice}
-                    className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600"
+                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
                   >
                     作成
                   </button>
@@ -339,7 +247,7 @@ export default function Home() {
                       setCreateOfficeName('');
                       setCreateOfficeCode('');
                     }}
-                    className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300"
+                    className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
                   >
                     キャンセル
                   </button>
@@ -348,7 +256,7 @@ export default function Home() {
             </div>
           )}
         </div>
-      </div>
+      </DiscordLayout>
     </AuthGuard>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import AuthGuard from '@/components/AuthGuard';
-import Header from '@/components/Header';
+import DiscordLayout from '@/components/DiscordLayout';
 import { getCurrentGlobalUser, getCurrentOfficeId } from '@/lib/authDB';
 import { 
   getMembers, 
@@ -349,13 +349,12 @@ export default function MembersPage() {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <Header title="メンバー管理" showBackButton />
-        
-        <div className="max-w-7xl mx-auto px-4 py-4">
+      <DiscordLayout>
+        <div className="p-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>
-              <p className="text-gray-600 mb-2">
+              <h1 className="text-2xl font-bold text-white mb-2">メンバー管理</h1>
+              <p className="text-gray-400 mb-2">
                 {userIsAdmin ? '管理者として全ての操作が可能です' : '閲覧モード（編集は管理者のみ）'}
               </p>
               <p className="text-sm text-gray-500">
@@ -376,8 +375,8 @@ export default function MembersPage() {
 
           {/* 自分のプロフィール */}
           {myProfile && (
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-lg p-6 mb-6 border-2 border-blue-200">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">自分のプロフィール</h2>
+            <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6 border border-gray-700">
+              <h2 className="text-xl font-bold text-white mb-4">自分のプロフィール</h2>
               
               {isEditingMyProfile ? (
                 <div className="space-y-4">
@@ -533,17 +532,17 @@ export default function MembersPage() {
           )}
 
           {/* フィルター＆ソート */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-md border border-gray-100 mb-6">
+          <div className="bg-gray-800 rounded-lg p-4 shadow-md border border-gray-700 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">部署で絞り込み</label>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">部署で絞り込み</label>
                 <select
                   value={filterDepartment}
                   onChange={(e) => {
                     setFilterDepartment(e.target.value);
                     setFilterGroup('全て');
                   }}
-                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                 >
                   <option value="全て">全ての部署 ({members.length}名)</option>
                   {departments.map(dept => (
@@ -553,11 +552,11 @@ export default function MembersPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">グループで絞り込み</label>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">グループで絞り込み</label>
                 <select
                   value={filterGroup}
                   onChange={(e) => setFilterGroup(e.target.value)}
-                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                 >
                   <option value="全て">全てのグループ</option>
                   {allGroups.map(group => (
@@ -567,11 +566,11 @@ export default function MembersPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">並び替え</label>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">並び替え</label>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as 'name' | 'department' | 'role' | 'group')}
-                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                 >
                   <option value="department">部署順</option>
                   <option value="group">グループ順</option>
@@ -837,7 +836,7 @@ export default function MembersPage() {
             </div>
           )}
         </main>
-      </div>
+      </DiscordLayout>
     </AuthGuard>
   );
 }

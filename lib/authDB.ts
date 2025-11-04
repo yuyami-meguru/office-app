@@ -126,15 +126,24 @@ export async function createAccount(username: string, password: string, name: st
     .select()
     .single();
 
-  if (error || !data) {
-    throw new Error('アカウントの作成に失敗しました');
+  if (error) {
+    console.error('アカウント作成エラー:', error);
+    // nameカラムが存在しない場合のエラーメッセージ
+    if (error.message.includes('column') && error.message.includes('name')) {
+      throw new Error('データベースにnameカラムが存在しません。Supabaseでsupabase-add-name-column.sqlを実行してください。');
+    }
+    throw new Error(`アカウントの作成に失敗しました: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error('アカウントの作成に失敗しました（データが返されませんでした）');
   }
 
   return {
     id: data.id,
     username: data.username,
     password: data.password,
-    name: data.name,
+    name: data.name || data.username, // nameカラムがない場合はusernameを使用
     createdAt: data.created_at,
   };
 }
@@ -156,7 +165,7 @@ export async function login(username: string, password: string): Promise<GlobalU
     id: data.id,
     username: data.username,
     password: data.password,
-    name: data.name || '',
+    name: data.name || data.username || '', // nameカラムがない場合はusernameを使用
     createdAt: data.created_at,
   };
 }
