@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 
 export default function Home() {
   const [memberships, setMemberships] = useState<OfficeMembership[]>([]);
-  const [offices, setOffices] = useState<(Office & { status: string })[]>([]);
+  const [offices, setOffices] = useState<(Office & { status: string; displayName: string })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showJoinForm, setShowJoinForm] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -45,10 +45,10 @@ export default function Home() {
       membershipList.map(async (m) => {
         const office = await getOffice(m.officeId);
         return {
-          ...office!,
+          ...(office as Office),
           status: m.status,
           displayName: m.displayName,
-        };
+        } as Office & { status: string; displayName: string };
       })
     );
     setOffices(officeList);
