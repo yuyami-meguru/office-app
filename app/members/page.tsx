@@ -78,11 +78,12 @@ export default function MembersPage() {
     if (!myProfile || !editingMyProfile) return;
     
     try {
+      // 役職とグループは変更しない（管理者のみ変更可能）
       await updateMember(myProfile.id, {
         displayName: editingMyProfile.displayName,
-        role: editingMyProfile.role,
+        role: myProfile.role, // 元の値を保持
         departments: editingMyProfile.departments,
-        group: editingMyProfile.group,
+        group: myProfile.group, // 元の値を保持
         avatarUrl: editingMyProfile.avatarUrl,
       });
       await loadData();
@@ -131,11 +132,10 @@ export default function MembersPage() {
 
   const handleStartEditMyProfile = () => {
     if (!myProfile) return;
+    // 役職とグループは編集できないため、表示名・部署・アバターのみ
     setEditingMyProfile({
       displayName: myProfile.displayName,
-      role: myProfile.role,
       departments: myProfile.departments,
-      group: myProfile.group,
       avatarUrl: myProfile.avatarUrl,
     });
     setIsEditingMyProfile(true);
@@ -428,15 +428,14 @@ export default function MembersPage() {
 
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">役職</label>
-                    <select
-                      value={editingMyProfile.role || ''}
-                      onChange={(e) => setEditingMyProfile({ ...editingMyProfile, role: e.target.value })}
-                      className="w-full border-2 border-gray-200 rounded-lg px-3 py-2"
-                    >
-                      {ROLES.map(role => (
-                        <option key={role} value={role}>{role}</option>
-                      ))}
-                    </select>
+                    <input
+                      type="text"
+                      value={myProfile.role}
+                      className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 bg-gray-100"
+                      disabled
+                      readOnly
+                    />
+                    <p className="text-xs text-gray-500 mt-1">役職の変更は管理者にお問い合わせください</p>
                   </div>
 
                   <div>
@@ -463,11 +462,12 @@ export default function MembersPage() {
                     <label className="block text-sm font-semibold text-gray-700 mb-1">グループ</label>
                     <input
                       type="text"
-                      value={editingMyProfile.group || ''}
-                      onChange={(e) => setEditingMyProfile({ ...editingMyProfile, group: e.target.value || null })}
-                      className="w-full border-2 border-gray-200 rounded-lg px-3 py-2"
-                      placeholder="グループ名"
+                      value={myProfile.group || ''}
+                      className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 bg-gray-100"
+                      disabled
+                      readOnly
                     />
+                    <p className="text-xs text-gray-500 mt-1">グループの変更は管理者にお問い合わせください</p>
                   </div>
 
                   <div className="flex gap-3">
