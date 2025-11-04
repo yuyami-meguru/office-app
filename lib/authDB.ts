@@ -18,6 +18,7 @@ export type OfficeMembership = {
   userRole: 'admin' | 'staff';
   departments: string[];
   group?: string | null;
+  avatarUrl?: string | null;
   status: 'approved' | 'pending';
   requirePasswordChange: boolean;
   createdAt: string;
@@ -175,6 +176,7 @@ export async function getUserMemberships(userId: number): Promise<OfficeMembersh
     userRole: m.user_role as 'admin' | 'staff',
     departments: m.departments || [],
     group: m.group ?? null,
+    avatarUrl: m.avatar_url ?? null,
     status: m.status as 'approved' | 'pending',
     requirePasswordChange: m.require_password_change,
     createdAt: m.created_at,
@@ -322,6 +324,7 @@ export async function createOffice(
       user_role: 'admin',
       departments: ['人事'],
       group: null,
+      avatar_url: null,
       status: 'approved',
       require_password_change: false,
     },
@@ -416,6 +419,7 @@ export async function approveJoinRequest(
         user_role: userRole,
         departments,
         group,
+        avatar_url: null,
         status: 'approved',
         require_password_change: false,
       },

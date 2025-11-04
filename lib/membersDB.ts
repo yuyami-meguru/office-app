@@ -1,27 +1,33 @@
 import { supabase } from './supabase';
-import { getCurrentOfficeId } from './userManagerDB';
+import { getCurrentOfficeId, getCurrentGlobalUser } from './authDB';
 
 export type Member = {
   id: number;
+  userId: number;
   officeId: string;
-  name: string;
+  displayName: string;
   role: string;
   departments: string[];
   group?: string | null;
-  username?: string;
-  userRole?: 'admin' | 'staff';
-  requirePasswordChange?: boolean;
+  avatarUrl?: string | null;
+  userRole: 'admin' | 'staff';
+  username?: string; // グローバルユーザー名（オプション）
 };
 
-// 全メンバーを取得
+// 全メンバーを取得（承認済みのみ）
 export async function getMembers(): Promise<Member[]> {
   const officeId = getCurrentOfficeId();
   if (!officeId) return [];
+  
   const { data, error } = await supabase
-    .from('members')
-    .select('*')
+    .from('office_memberships')
+    .select(`
+      *,
+      global_users!office_memberships_user_id_fkey(username)
+    `)
     .eq('office_id', officeId)
-    .order('name', { ascending: true });
+    .eq('status', 'approved')
+    .order('display_name', { ascending: true });
 
   if (error) {
     console.error('メンバー取得エラー:', error);
@@ -30,30 +36,87 @@ export async function getMembers(): Promise<Member[]> {
 
   return (data || []).map((m: any) => ({
     id: m.id,
+    userId: m.user_id,
     officeId: m.office_id,
-    name: m.name,
+    displayName: m.display_name,
     role: m.role,
     departments: m.departments || [],
     group: m.group ?? null,
+    avatarUrl: m.avatar_url ?? null,
+    userRole: m.user_role as 'admin' | 'staff',
+    username: m.global_users?.username,
   }));
 }
 
-// メンバーを追加
-export async function addMember(member: Omit<Member, 'id' | 'officeId'>): Promise<Member> {
+// 自分のメンバーシップを取得
+export async function getMyMembership(): Promise<Member | null> {
+  const user = getCurrentGlobalUser();
+  const officeId = getCurrentOfficeId();
+  
+  if (!user || !officeId) return null;
+
+  const { data, error } = await supabase
+    .from('office_memberships')
+    .select(`
+      *,
+      global_users!office_memberships_user_id_fkey(username)
+    `)
+    .eq('user_id', user.id)
+    .eq('office_id', officeId)
+    .eq('status', 'approved')
+    .single();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return {
+    id: data.id,
+    userId: data.user_id,
+    officeId: data.office_id,
+    displayName: data.display_name,
+    role: data.role,
+    departments: data.departments || [],
+    group: data.group ?? null,
+    avatarUrl: data.avatar_url ?? null,
+    userRole: data.user_role as 'admin' | 'staff',
+    username: data.global_users?.username,
+  };
+}
+
+// メンバーを追加（管理者のみ、グローバルユーザーを指定）
+export async function addMember(member: {
+  userId: number;
+  displayName: string;
+  role: string;
+  departments: string[];
+  group?: string | null;
+  userRole: 'admin' | 'staff';
+  avatarUrl?: string | null;
+}): Promise<Member> {
   const officeId = getCurrentOfficeId();
   if (!officeId) throw new Error('事務所が選択されていません');
+  
   const { data, error } = await supabase
-    .from('members')
+    .from('office_memberships')
     .insert([
       {
         office_id: officeId,
-        name: member.name,
+        user_id: member.userId,
+        display_name: member.displayName,
         role: member.role,
         departments: member.departments,
         group: member.group ?? null,
+        user_role: member.userRole,
+        avatar_url: member.avatarUrl ?? null,
+        status: 'approved',
+        require_password_change: false,
       },
     ])
-    .select()
+    .select(`
+      *,
+      global_users!office_memberships_user_id_fkey(username)
+    `)
     .single();
 
   if (error) {
@@ -62,18 +125,22 @@ export async function addMember(member: Omit<Member, 'id' | 'officeId'>): Promis
 
   return {
     id: data.id,
+    userId: data.user_id,
     officeId: data.office_id,
-    name: data.name,
+    displayName: data.display_name,
     role: data.role,
     departments: data.departments || [],
     group: data.group ?? null,
+    avatarUrl: data.avatar_url ?? null,
+    userRole: data.user_role as 'admin' | 'staff',
+    username: data.global_users?.username,
   };
 }
 
-// メンバーを削除
+// メンバーを削除（管理者のみ）
 export async function deleteMember(id: number): Promise<boolean> {
   const { error } = await supabase
-    .from('members')
+    .from('office_memberships')
     .delete()
     .eq('id', id);
 
@@ -85,17 +152,33 @@ export async function deleteMember(id: number): Promise<boolean> {
 }
 
 // メンバーを更新
-export async function updateMember(id: number, updates: Partial<Omit<Member, 'id' | 'officeId'>>): Promise<Member> {
+export async function updateMember(
+  id: number,
+  updates: Partial<{
+    displayName: string;
+    role: string;
+    departments: string[];
+    group: string | null;
+    avatarUrl: string | null;
+    userRole: 'admin' | 'staff';
+  }>
+): Promise<Member> {
+  const dbUpdates: any = {};
+  if (updates.displayName !== undefined) dbUpdates.display_name = updates.displayName;
+  if (updates.role !== undefined) dbUpdates.role = updates.role;
+  if (updates.departments !== undefined) dbUpdates.departments = updates.departments;
+  if (updates.group !== undefined) dbUpdates.group = updates.group;
+  if (updates.avatarUrl !== undefined) dbUpdates.avatar_url = updates.avatarUrl;
+  if (updates.userRole !== undefined) dbUpdates.user_role = updates.userRole;
+
   const { data, error } = await supabase
-    .from('members')
-    .update({
-      name: updates.name,
-      role: updates.role,
-      departments: updates.departments,
-      group: updates.group ?? null,
-    })
+    .from('office_memberships')
+    .update(dbUpdates)
     .eq('id', id)
-    .select()
+    .select(`
+      *,
+      global_users!office_memberships_user_id_fkey(username)
+    `)
     .single();
 
   if (error || !data) {
@@ -104,11 +187,15 @@ export async function updateMember(id: number, updates: Partial<Omit<Member, 'id
 
   return {
     id: data.id,
+    userId: data.user_id,
     officeId: data.office_id,
-    name: data.name,
+    displayName: data.display_name,
     role: data.role,
     departments: data.departments || [],
     group: data.group ?? null,
+    avatarUrl: data.avatar_url ?? null,
+    userRole: data.user_role as 'admin' | 'staff',
+    username: data.global_users?.username,
   };
 }
 
@@ -161,4 +248,3 @@ export async function deleteDepartment(name: string): Promise<boolean> {
 
   return true;
 }
-
