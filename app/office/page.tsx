@@ -319,6 +319,20 @@ export default function OfficePage() {
                 icon="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
                 color="orange"
               />
+              <QuickAccessCard
+                title="ファイル共有"
+                description="部署ごとのファイルを整理・共有"
+                href="/files"
+                icon="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                color="teal"
+              />
+              <QuickAccessCard
+                title="活動履歴"
+                description="最近の活動を確認"
+                href="/activity"
+                icon="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                color="gray"
+              />
             </div>
           </div>
         </div>
@@ -390,13 +404,15 @@ function QuickAccessCard({
   description: string; 
   href: string; 
   icon: string; 
-  color: 'blue' | 'green' | 'purple' | 'orange';
+  color: 'blue' | 'green' | 'purple' | 'orange' | 'teal' | 'gray';
 }) {
   const colorClasses = {
     blue: 'bg-blue-50 text-blue-600',
     green: 'bg-green-50 text-green-600',
     purple: 'bg-purple-50 text-purple-600',
     orange: 'bg-orange-50 text-orange-600',
+    teal: 'bg-teal-50 text-teal-600',
+    gray: 'bg-gray-50 text-gray-600',
   };
 
   return (

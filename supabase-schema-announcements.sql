@@ -62,6 +62,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- 既存のトリガーを削除してから再作成
+DROP TRIGGER IF EXISTS update_announcements_updated_at ON announcements;
+
 CREATE TRIGGER update_announcements_updated_at
   BEFORE UPDATE ON announcements
   FOR EACH ROW

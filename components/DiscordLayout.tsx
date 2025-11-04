@@ -38,50 +38,62 @@ export default function DiscordLayout({ children }: DiscordLayoutProps) {
   }, [selectedOfficeId]);
 
   const loadOffices = async () => {
-    const user = getCurrentGlobalUser();
-    if (!user) return;
+    try {
+      const user = getCurrentGlobalUser();
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
 
-    const membershipList = await getUserMemberships(user.id);
-    
-    const officeList = await Promise.all(
-      membershipList.map(async (m) => {
-        const office = await getOffice(m.officeId);
-        return {
-          ...(office as Office),
-          status: m.status,
-          displayName: m.displayName,
-        } as Office & { status: string; displayName: string };
-      })
-    );
-    
-    setOffices(officeList);
-    
-    // 現在の事務所を設定
-    const currentOfficeId = localStorage.getItem('office_app_current_office');
-    if (currentOfficeId) {
-      try {
-        const office = JSON.parse(currentOfficeId);
-        setSelectedOfficeId(office.id);
-      } catch {}
+      const membershipList = await getUserMemberships(user.id);
+      
+      const officeList = await Promise.all(
+        membershipList.map(async (m) => {
+          const office = await getOffice(m.officeId);
+          return {
+            ...(office as Office),
+            status: m.status,
+            displayName: m.displayName,
+          } as Office & { status: string; displayName: string };
+        })
+      );
+      
+      setOffices(officeList);
+      
+      // 現在の事務所を設定
+      const currentOfficeId = localStorage.getItem('office_app_current_office');
+      if (currentOfficeId) {
+        try {
+          const office = JSON.parse(currentOfficeId);
+          setSelectedOfficeId(office.id);
+        } catch {}
+      }
+    } catch (err) {
+      console.error('事務所読み込みエラー:', err);
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   const loadMyDepartments = async () => {
-    const myMembership = await getMyMembership();
-    if (myMembership) {
-      setMyDepartments(myMembership.departments || []);
-      
-      // URLから部署を取得（例: /office/department/歌い手）
-      const deptMatch = pathname.match(/\/office\/department\/(.+)$/);
-      if (deptMatch) {
-        const deptFromUrl = decodeURIComponent(deptMatch[1]);
-        if (myMembership.departments.includes(deptFromUrl)) {
-          setSelectedDepartment(deptFromUrl);
+    try {
+      const myMembership = await getMyMembership();
+      if (myMembership) {
+        setMyDepartments(myMembership.departments || []);
+        
+        // URLから部署を取得（例: /office/department/歌い手）
+        const deptMatch = pathname.match(/\/office\/department\/(.+)$/);
+        if (deptMatch) {
+          const deptFromUrl = decodeURIComponent(deptMatch[1]);
+          if (myMembership.departments.includes(deptFromUrl)) {
+            setSelectedDepartment(deptFromUrl);
+          }
         }
+      } else {
+        setMyDepartments([]);
       }
-    } else {
+    } catch (err) {
+      console.error('部署読み込みエラー:', err);
       setMyDepartments([]);
     }
   };
@@ -235,6 +247,36 @@ export default function DiscordLayout({ children }: DiscordLayoutProps) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
               <span>お知らせ</span>
+            </a>
+
+            {/* ファイル共有リンク */}
+            <a
+              href="/files"
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors mb-2 ${
+                pathname === '/files'
+                  ? 'bg-indigo-50 text-indigo-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              <span>ファイル</span>
+            </a>
+
+            {/* 活動履歴リンク */}
+            <a
+              href="/activity"
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors mb-2 ${
+                pathname === '/activity'
+                  ? 'bg-indigo-50 text-indigo-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>活動履歴</span>
             </a>
             
             <div className="h-px bg-gray-200 my-2"></div>
