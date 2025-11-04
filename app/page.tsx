@@ -1,142 +1,324 @@
 'use client';
 
-import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import AuthGuard from '@/components/AuthGuard';
 import Header from '@/components/Header';
+import {
+  getCurrentGlobalUser,
+  getUserMemberships,
+  getOffice,
+  createJoinRequest,
+  createOffice,
+  type OfficeMembership,
+  type Office,
+} from '@/lib/authDB';
+import { setCurrentOffice } from '@/lib/authDB';
 
 export const dynamic = 'force-dynamic';
 
 export default function Home() {
+  const [memberships, setMemberships] = useState<OfficeMembership[]>([]);
+  const [offices, setOffices] = useState<(Office & { status: string })[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showJoinForm, setShowJoinForm] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [joinOfficeCode, setJoinOfficeCode] = useState('');
+  const [joinDisplayName, setJoinDisplayName] = useState('');
+  const [createOfficeName, setCreateOfficeName] = useState('');
+  const [createOfficeCode, setCreateOfficeCode] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    const user = getCurrentGlobalUser();
+    if (!user) return;
+
+    const membershipList = await getUserMemberships(user.id);
+    setMemberships(membershipList);
+
+    // 事務所情報を取得
+    const officeList = await Promise.all(
+      membershipList.map(async (m) => {
+        const office = await getOffice(m.officeId);
+        return {
+          ...office!,
+          status: m.status,
+          displayName: m.displayName,
+        };
+      })
+    );
+    setOffices(officeList);
+    setIsLoading(false);
+  };
+
+  const handleJoinOffice = async () => {
+    setError('');
+    setSuccess('');
+
+    if (!joinOfficeCode || !joinDisplayName) {
+      setError('事務所コードと表示名を入力してください');
+      return;
+    }
+
+    const user = getCurrentGlobalUser();
+    if (!user) return;
+
+    try {
+      await createJoinRequest(user.id, joinOfficeCode, joinDisplayName);
+      setSuccess('参加リクエストを送信しました。承認をお待ちください。');
+      setJoinOfficeCode('');
+      setJoinDisplayName('');
+      setShowJoinForm(false);
+      await loadData();
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'エラーが発生しました');
+    }
+  };
+
+  const handleCreateOffice = async () => {
+    setError('');
+    setSuccess('');
+
+    if (!createOfficeName || !createOfficeCode) {
+      setError('事務所名と事務所コードを入力してください');
+      return;
+    }
+
+    const user = getCurrentGlobalUser();
+    if (!user) return;
+
+    try {
+      const office = await createOffice(user.id, createOfficeName, createOfficeCode);
+      setSuccess(`事務所「${office.name}」を作成しました！`);
+      setCreateOfficeName('');
+      setCreateOfficeCode('');
+      setShowCreateForm(false);
+      await loadData();
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'エラーが発生しました');
+    }
+  };
+
+  const handleEnterOffice = async (officeId: string) => {
+    const office = offices.find((o) => o.id === officeId);
+    if (!office) return;
+
+    const membership = memberships.find((m) => m.officeId === officeId);
+    if (!membership || membership.status !== 'approved') {
+      setError('この事務所はまだ承認されていません');
+      return;
+    }
+
+    setCurrentOffice(office);
+    window.location.href = '/office';
+  };
+
+  if (isLoading) {
+    return (
+      <AuthGuard>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <p className="text-gray-600">読み込み中...</p>
+        </div>
+      </AuthGuard>
+    );
+  }
+
   return (
     <AuthGuard>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        {/* ヘッダー */}
-        <Header title="事務所管理アプリ" />
+        <Header title="事務所一覧" showBackButton={false} />
         
-        {/* ウェルカムセクション */}
         <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="text-center mb-8">
-            <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-3">
-              ようこそ
-            </h2>
-            <p className="text-lg text-gray-600">
-              事務所の業務を効率的に管理しましょう
-            </p>
+          {/* メッセージ */}
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
+              {success}
+            </div>
+          )}
+
+          {/* 所属事務所一覧 */}
+          {offices.length > 0 ? (
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">所属事務所</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {offices.map((office) => {
+                  const membership = memberships.find((m) => m.officeId === office.id);
+                  const isApproved = membership?.status === 'approved';
+                  
+                  return (
+                    <div
+                      key={office.id}
+                      className={`bg-white rounded-xl shadow-lg p-6 border-2 ${
+                        isApproved ? 'border-green-200 hover:border-green-300' : 'border-orange-200'
+                      } transition-all`}
+                    >
+                      <h3 className="text-xl font-bold text-gray-800 mb-2">{office.name}</h3>
+                      <p className="text-sm text-gray-600 mb-2">表示名: {office.displayName}</p>
+                      <p className="text-sm text-gray-600 mb-4">コード: {office.code}</p>
+                      
+                      {membership?.status === 'approved' ? (
+                        <button
+                          onClick={() => handleEnterOffice(office.id)}
+                          className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition-all"
+                        >
+                          開く
+                        </button>
+                      ) : (
+                        <div className="w-full bg-orange-100 text-orange-700 py-2 rounded-lg text-center">
+                          承認待ち
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="mb-8 text-center py-12 bg-white rounded-xl shadow">
+              <p className="text-gray-600 text-lg mb-4">事務所に所属していません</p>
+              <p className="text-gray-500">既存の事務所に参加するか、新しく事務所を作成してください</p>
+            </div>
+          )}
+
+          {/* アクションボタン */}
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={() => {
+                setShowJoinForm(!showJoinForm);
+                setShowCreateForm(false);
+                setError('');
+                setSuccess('');
+              }}
+              className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-all font-semibold"
+            >
+              既存の事務所に参加
+            </button>
+            <button
+              onClick={() => {
+                setShowCreateForm(!showCreateForm);
+                setShowJoinForm(false);
+                setError('');
+                setSuccess('');
+              }}
+              className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-all font-semibold"
+            >
+              新しく事務所を作る
+            </button>
           </div>
+
+          {/* 参加フォーム */}
+          {showJoinForm && (
+            <div className="mt-6 bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-xl font-bold mb-4">事務所に参加</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    事務所コード
+                  </label>
+                  <input
+                    type="text"
+                    value={joinOfficeCode}
+                    onChange={(e) => setJoinOfficeCode(e.target.value.toUpperCase())}
+                    className="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500"
+                    placeholder="例: DEMO2025"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    事務所での表示名
+                  </label>
+                  <input
+                    type="text"
+                    value={joinDisplayName}
+                    onChange={(e) => setJoinDisplayName(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500"
+                    placeholder="この事務所での表示名を入力"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleJoinOffice}
+                    className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600"
+                  >
+                    参加リクエストを送信
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowJoinForm(false);
+                      setJoinOfficeCode('');
+                      setJoinDisplayName('');
+                    }}
+                    className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300"
+                  >
+                    キャンセル
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 作成フォーム */}
+          {showCreateForm && (
+            <div className="mt-6 bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-xl font-bold mb-4">新規事務所を作成</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    事務所名
+                  </label>
+                  <input
+                    type="text"
+                    value={createOfficeName}
+                    onChange={(e) => setCreateOfficeName(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500"
+                    placeholder="例: サンプル事務所"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    事務所コード（英数字のみ）
+                  </label>
+                  <input
+                    type="text"
+                    value={createOfficeCode}
+                    onChange={(e) => setCreateOfficeCode(e.target.value.toUpperCase())}
+                    className="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500"
+                    placeholder="例: OFFICE2025"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleCreateOffice}
+                    className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600"
+                  >
+                    作成
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowCreateForm(false);
+                      setCreateOfficeName('');
+                      setCreateOfficeCode('');
+                    }}
+                    className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300"
+                  >
+                    キャンセル
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-
-      {/* メインコンテンツ */}
-      <main className="max-w-7xl mx-auto pb-12 px-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          
-          {/* メンバー管理カード */}
-          <Link href="/members" className="group">
-            <div className="relative bg-white rounded-2xl shadow-lg p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-blue-100 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full -mr-16 -mt-16 opacity-10 group-hover:opacity-20 transition-opacity"></div>
-              <div className="relative">
-                <h2 className="text-2xl font-bold mb-4 text-gray-800">メンバー管理</h2>
-                <p className="text-gray-600 mb-6">
-                  事務所メンバーの情報を管理
-                </p>
-                <div className="flex items-center text-blue-600 font-semibold group-hover:translate-x-2 transition-transform">
-                  開く
-                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </Link>
-
-          {/* タスク管理カード */}
-          <Link href="/tasks" className="group">
-            <div className="relative bg-white rounded-2xl shadow-lg p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-green-100 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-400 to-green-600 rounded-full -mr-16 -mt-16 opacity-10 group-hover:opacity-20 transition-opacity"></div>
-              <div className="relative">
-                <h2 className="text-2xl font-bold mb-4 text-gray-800">タスク管理</h2>
-                <p className="text-gray-600 mb-6">
-                  やることリストを管理
-                </p>
-                <div className="flex items-center text-green-600 font-semibold group-hover:translate-x-2 transition-transform">
-                  開く
-                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </Link>
-
-          {/* スケジュール管理カード */}
-          <Link href="/schedule" className="group">
-            <div className="relative bg-white rounded-2xl shadow-lg p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-purple-100 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full -mr-16 -mt-16 opacity-10 group-hover:opacity-20 transition-opacity"></div>
-              <div className="relative">
-                <h2 className="text-2xl font-bold mb-4 text-gray-800">スケジュール</h2>
-                <p className="text-gray-600 mb-6">
-                  予定を管理
-                </p>
-                <div className="flex items-center text-purple-600 font-semibold group-hover:translate-x-2 transition-transform">
-                  開く
-                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </Link>
-
-          {/* ユーザー管理カード（管理者のみ） */}
-          <Link href="/users" className="group">
-            <div className="relative bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-lg p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full -mr-16 -mt-16 opacity-10 group-hover:opacity-20 transition-opacity"></div>
-              <div className="relative">
-                <h2 className="text-2xl font-bold mb-4 text-white">ユーザー管理</h2>
-                <p className="text-indigo-100 mb-6">
-                  アカウント管理（管理者のみ）
-                </p>
-                <div className="flex items-center text-white font-semibold group-hover:translate-x-2 transition-transform">
-                  開く
-                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </Link>
-
-        </div>
-
-        {/* クイック統計（オプション） */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">今日のタスク</p>
-                <p className="text-3xl font-bold text-gray-800">5</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">今週の予定</p>
-                <p className="text-3xl font-bold text-gray-800">12</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">メンバー数</p>
-                <p className="text-3xl font-bold text-gray-800">8</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
       </div>
     </AuthGuard>
   );

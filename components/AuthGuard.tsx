@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { getCurrentGlobalUser } from '@/lib/authDB';
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -14,9 +15,9 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     
     // ログイン状態をチェック
     try {
-      const authStatus = localStorage.getItem('isAuthenticated');
+      const user = getCurrentGlobalUser();
       
-      if (authStatus === 'true') {
+      if (user) {
         setIsAuthenticated(true);
         setIsLoading(false);
       } else {
@@ -46,4 +47,3 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   return <>{children}</>;
 }
-

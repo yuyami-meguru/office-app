@@ -1,44 +1,51 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { authenticateUser, setCurrentUser, initializeUsers } from '@/lib/userManagerDB';
+import { createAccount, login, setCurrentGlobalUser } from '@/lib/authDB';
 
 export const dynamic = 'force-dynamic';
 
 export default function LoginPage() {
-  const [officeCode, setOfficeCode] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
 
-  useEffect(() => {
-    // ユーザーデータを初期化
-    initializeUsers();
-  }, []);
-
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!officeCode) {
-      setError('事務所コードを入力してください');
+    setError('');
+
+    if (!username || !password) {
+      setError('ユーザー名とパスワードを入力してください');
       return;
     }
-    const user = await authenticateUser(officeCode, username, password);
-    
-    if (user) {
-      // ログイン成功
-      setCurrentUser(user);
-      
-      // パスワード変更が必要な場合は専用ページへ
-      if (user.requirePasswordChange) {
-        router.push('/change-password');
-      } else {
+
+    if (password.length < 6) {
+      setError('パスワードは6文字以上にしてください');
+      return;
+    }
+
+    try {
+      if (isSignUp) {
+        // アカウント作成
+        const user = await createAccount(username, password);
+        setCurrentGlobalUser(user);
         router.push('/');
+      } else {
+        // ログイン
+        const user = await login(username, password);
+        if (user) {
+          setCurrentGlobalUser(user);
+          router.push('/');
+        } else {
+          setError('ユーザー名またはパスワードが間違っています');
+          setPassword('');
+        }
       }
-    } else {
-      setError('ユーザー名またはパスワードが間違っています');
-      setPassword('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'エラーが発生しました');
     }
   };
 
@@ -58,30 +65,47 @@ export default function LoginPage() {
             事務所管理アプリ
           </h1>
           <p className="text-white/90 text-lg">
-            ログインして続行してください
+            {isSignUp ? '新規アカウントを作成' : 'ログインして続行してください'}
           </p>
         </div>
 
         <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/20">
+          {/* タブ切り替え */}
+          <div className="flex gap-2 mb-6 bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => {
+                setIsSignUp(false);
+                setError('');
+                setUsername('');
+                setPassword('');
+              }}
+              className={`flex-1 py-2 rounded-md font-semibold transition-all ${
+                !isSignUp
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              ログイン
+            </button>
+            <button
+              onClick={() => {
+                setIsSignUp(true);
+                setError('');
+                setUsername('');
+                setPassword('');
+              }}
+              className={`flex-1 py-2 rounded-md font-semibold transition-all ${
+                isSignUp
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              アカウント作成
+            </button>
+          </div>
 
-          {/* ログインフォーム */}
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                事務所コード
-              </label>
-              <input
-                type="text"
-                value={officeCode}
-                onChange={(e) => {
-                  setOfficeCode(e.target.value.toUpperCase());
-                  setError('');
-                }}
-                className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-                placeholder="例: DEMO2025"
-                required
-              />
-            </div>
+          {/* フォーム */}
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 ユーザー名
@@ -111,7 +135,7 @@ export default function LoginPage() {
                   setError('');
                 }}
                 className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-                placeholder="パスワードを入力"
+                placeholder="パスワードを入力（6文字以上）"
                 required
               />
             </div>
@@ -126,36 +150,11 @@ export default function LoginPage() {
               type="submit"
               className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-xl font-bold hover:from-indigo-700 hover:to-purple-700 transform hover:scale-[1.02] transition-all shadow-lg hover:shadow-xl"
             >
-              ログイン
+              {isSignUp ? 'アカウントを作成' : 'ログイン'}
             </button>
           </form>
-
-          {/* デモ用のヒント */}
-          <div className="mt-6 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-            <div>
-              <p className="text-sm font-bold text-indigo-900 mb-2">
-                初回ログイン情報
-              </p>
-                <div className="space-y-1 text-sm text-indigo-800">
-                  <p><strong>事務所コード:</strong> DEMO2025</p>
-                  <p><strong>ユーザー名:</strong> admin</p>
-                  <p><strong>パスワード:</strong> office2025</p>
-                </div>
-              <p className="text-xs text-indigo-600 mt-2">
-                ※ログイン後、ユーザー管理で新しいユーザーを追加できます
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* セキュリティ注意 */}
-        <div className="mt-6 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-white text-sm">
-            <span>個人情報は保護されています</span>
-          </div>
         </div>
       </div>
     </div>
   );
 }
-
