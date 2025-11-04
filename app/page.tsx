@@ -108,7 +108,7 @@ export default function Home() {
       <AuthGuard>
         <DiscordLayout>
           <div className="flex items-center justify-center h-full">
-            <p className="text-gray-400">読み込み中...</p>
+            <p className="text-gray-500">読み込み中...</p>
           </div>
         </DiscordLayout>
       </AuthGuard>
@@ -118,15 +118,15 @@ export default function Home() {
   return (
     <AuthGuard>
       <DiscordLayout>
-        <div className="p-6">
+        <div className="p-8">
           {/* メッセージ */}
           {error && (
-            <div className="mb-4 p-4 bg-red-900/50 border border-red-700 rounded-lg text-red-200">
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
               {error}
             </div>
           )}
           {success && (
-            <div className="mb-4 p-4 bg-green-900/50 border border-green-700 rounded-lg text-green-200">
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
               {success}
             </div>
           )}
@@ -135,8 +135,8 @@ export default function Home() {
           {offices.length === 0 && (
             <div className="text-center py-16">
               <div className="max-w-md mx-auto">
-                <h2 className="text-2xl font-bold text-white mb-4">事務所に所属していません</h2>
-                <p className="text-gray-400 mb-8">既存の事務所に参加するか、新しく事務所を作成してください</p>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-3">事務所に所属していません</h2>
+                <p className="text-gray-600 mb-8">既存の事務所に参加するか、新しく事務所を作成してください</p>
                 
                 <div className="flex gap-4 justify-center">
                   <button
@@ -144,7 +144,7 @@ export default function Home() {
                       setShowJoinForm(!showJoinForm);
                       setShowCreateForm(false);
                     }}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
                   >
                     事務所に参加
                   </button>
@@ -153,7 +153,7 @@ export default function Home() {
                       setShowCreateForm(!showCreateForm);
                       setShowJoinForm(false);
                     }}
-                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
                   >
                     事務所を作成
                   </button>
@@ -164,33 +164,33 @@ export default function Home() {
 
           {/* 参加フォーム */}
           {showJoinForm && (
-            <div className="mb-6 bg-gray-800 rounded-lg p-6 border border-gray-700">
-              <h3 className="text-xl font-bold mb-4 text-white">事務所に参加</h3>
+            <div className="mb-8 bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+              <h3 className="text-xl font-semibold mb-4 text-gray-900">事務所に参加</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-300 mb-2">事務所コード</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">事務所コード</label>
                   <input
                     type="text"
                     value={joinOfficeCode}
                     onChange={(e) => setJoinOfficeCode(e.target.value.toUpperCase())}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="例: DEMO2025"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-300 mb-2">事務所での表示名</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">事務所での表示名</label>
                   <input
                     type="text"
                     value={joinDisplayName}
                     onChange={(e) => setJoinDisplayName(e.target.value)}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="この事務所での表示名を入力"
                   />
                 </div>
                 <div className="flex gap-3">
                   <button
                     onClick={handleJoinOffice}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
                   >
                     参加リクエストを送信
                   </button>
@@ -200,7 +200,7 @@ export default function Home() {
                       setJoinOfficeCode('');
                       setJoinDisplayName('');
                     }}
-                    className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2.5 rounded-lg font-medium transition-colors"
                   >
                     キャンセル
                   </button>
@@ -211,33 +211,33 @@ export default function Home() {
 
           {/* 作成フォーム */}
           {showCreateForm && (
-            <div className="mb-6 bg-gray-800 rounded-lg p-6 border border-gray-700">
-              <h3 className="text-xl font-bold mb-4 text-white">新規事務所を作成</h3>
+            <div className="mb-8 bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+              <h3 className="text-xl font-semibold mb-4 text-gray-900">新規事務所を作成</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-300 mb-2">事務所名</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">事務所名</label>
                   <input
                     type="text"
                     value={createOfficeName}
                     onChange={(e) => setCreateOfficeName(e.target.value)}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     placeholder="例: サンプル事務所"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-300 mb-2">事務所コード（英数字のみ）</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">事務所コード（英数字のみ）</label>
                   <input
                     type="text"
                     value={createOfficeCode}
                     onChange={(e) => setCreateOfficeCode(e.target.value.toUpperCase())}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     placeholder="例: OFFICE2025"
                   />
                 </div>
                 <div className="flex gap-3">
                   <button
                     onClick={handleCreateOffice}
-                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
                   >
                     作成
                   </button>
@@ -247,7 +247,7 @@ export default function Home() {
                       setCreateOfficeName('');
                       setCreateOfficeCode('');
                     }}
-                    className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2.5 rounded-lg font-medium transition-colors"
                   >
                     キャンセル
                   </button>
