@@ -5,6 +5,7 @@ export type GlobalUser = {
   id: number;
   username: string;
   password: string;
+  name: string;
   createdAt: string;
 };
 
@@ -99,7 +100,7 @@ export function logout() {
 }
 
 // アカウント作成
-export async function createAccount(username: string, password: string): Promise<GlobalUser> {
+export async function createAccount(username: string, password: string, name: string): Promise<GlobalUser> {
   // ユーザー名の重複チェック
   const { data: existing } = await supabase
     .from('global_users')
@@ -115,9 +116,13 @@ export async function createAccount(username: string, password: string): Promise
     throw new Error('パスワードは6文字以上にしてください');
   }
 
+  if (!name || name.trim() === '') {
+    throw new Error('名前を入力してください');
+  }
+
   const { data, error } = await supabase
     .from('global_users')
-    .insert([{ username, password }])
+    .insert([{ username, password, name: name.trim() }])
     .select()
     .single();
 
@@ -129,6 +134,7 @@ export async function createAccount(username: string, password: string): Promise
     id: data.id,
     username: data.username,
     password: data.password,
+    name: data.name,
     createdAt: data.created_at,
   };
 }
@@ -150,6 +156,7 @@ export async function login(username: string, password: string): Promise<GlobalU
     id: data.id,
     username: data.username,
     password: data.password,
+    name: data.name || '',
     createdAt: data.created_at,
   };
 }

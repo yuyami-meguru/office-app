@@ -29,6 +29,20 @@ export default function Home() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // 時間帯に応じた挨拶を取得
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 0 && hour <= 5) {
+      return 'こんばんは';
+    } else if (hour >= 6 && hour <= 10) {
+      return 'おはようございます';
+    } else if (hour >= 11 && hour <= 17) {
+      return 'こんにちは';
+    } else {
+      return 'こんばんは';
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, []);
@@ -135,6 +149,21 @@ export default function Home() {
         <Header title="事務所一覧" showBackButton={false} />
         
         <div className="max-w-7xl mx-auto px-4 py-8">
+          {/* 挨拶メッセージ */}
+          {(() => {
+            const user = getCurrentGlobalUser();
+            if (user && user.name) {
+              return (
+                <div className="mb-6 p-6 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl shadow-lg text-white">
+                  <h2 className="text-2xl font-bold">
+                    {getGreeting()}、{user.name}さん
+                  </h2>
+                </div>
+              );
+            }
+            return null;
+          })()}
+
           {/* メッセージ */}
           {error && (
             <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
