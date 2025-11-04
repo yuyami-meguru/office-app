@@ -14,6 +14,7 @@ import {
   deleteDepartment,
   type Member 
 } from '@/lib/membersDB';
+import { uploadAvatar } from '@/lib/upload';
 
 const ROLES = ['マネージャー', 'リーダー', 'メンバー', 'アシスタント'];
 
@@ -25,6 +26,7 @@ export default function MembersPage() {
   const [departments, setDepartments] = useState<string[]>([]);
   const [isEditingMyProfile, setIsEditingMyProfile] = useState(false);
   const [editingMyProfile, setEditingMyProfile] = useState<Partial<Member>>({});
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [newMember, setNewMember] = useState({ name: '', role: '', departments: [] as string[], group: '' });
   const [userIsAdmin, setUserIsAdmin] = useState(false);
@@ -88,6 +90,42 @@ export default function MembersPage() {
       setEditingMyProfile({});
     } catch (err) {
       alert('プロフィールの更新に失敗しました');
+    }
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // ファイルサイズチェック（5MB以下）
+    if (file.size > 5 * 1024 * 1024) {
+      alert('画像サイズは5MB以下にしてください');
+      return;
+    }
+
+    // 画像ファイルかチェック
+    if (!file.type.startsWith('image/')) {
+      alert('画像ファイルを選択してください');
+      return;
+    }
+
+    const user = getCurrentGlobalUser();
+    const officeId = getCurrentOfficeId();
+    if (!user || !officeId) {
+      alert('ログイン情報が取得できません');
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const avatarUrl = await uploadAvatar(file, user.id, officeId);
+      setEditingMyProfile({ ...editingMyProfile, avatarUrl });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '画像のアップロードに失敗しました');
+    } finally {
+      setUploadingAvatar(false);
+      // ファイル入力の値をリセット
+      event.target.value = '';
     }
   };
 
@@ -359,15 +397,22 @@ export default function MembersPage() {
                     </div>
                     <div className="flex-1">
                       <label className="block text-sm font-semibold text-gray-700 mb-1">
-                        アバター画像URL
+                        アバター画像
                       </label>
                       <input
-                        type="text"
-                        value={editingMyProfile.avatarUrl || ''}
-                        onChange={(e) => setEditingMyProfile({ ...editingMyProfile, avatarUrl: e.target.value || null })}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarUpload}
+                        disabled={uploadingAvatar}
                         className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm"
-                        placeholder="https://example.com/avatar.jpg"
                       />
+                      {uploadingAvatar && (
+                        <p className="text-xs text-blue-600 mt-1">アップロード中...</p>
+                      )}
+                      {editingMyProfile.avatarUrl && (
+                        <p className="text-xs text-gray-500 mt-1">現在の画像: {editingMyProfile.avatarUrl}</p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">画像ファイルを選択してください（5MB以下）</p>
                     </div>
                   </div>
                   
@@ -607,14 +652,38 @@ export default function MembersPage() {
                         )}
                       </div>
                       <div className="flex-1">
-                        <label className="block text-xs font-semibold text-gray-600 mb-1">アバター画像URL</label>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">アバター画像</label>
                         <input
-                          type="text"
-                          value={editingMember.avatarUrl || ''}
-                          onChange={(e) => setEditingMember({ ...editingMember, avatarUrl: e.target.value || null })}
+                          type="file"
+                          accept="image/*"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            if (file.size > 5 * 1024 * 1024) {
+                              alert('画像サイズは5MB以下にしてください');
+                              return;
+                            }
+                            if (!file.type.startsWith('image/')) {
+                              alert('画像ファイルを選択してください');
+                              return;
+                            }
+                            const user = getCurrentGlobalUser();
+                            const officeId = getCurrentOfficeId();
+                            if (!user || !officeId) {
+                              alert('ログイン情報が取得できません');
+                              return;
+                            }
+                            try {
+                              const avatarUrl = await uploadAvatar(file, user.id, officeId);
+                              setEditingMember({ ...editingMember, avatarUrl });
+                            } catch (err) {
+                              alert(err instanceof Error ? err.message : '画像のアップロードに失敗しました');
+                            }
+                            e.target.value = '';
+                          }}
                           className="w-full border border-gray-300 rounded px-2 py-1 text-xs"
-                          placeholder="https://..."
                         />
+                        <p className="text-xs text-gray-500 mt-1">画像ファイルを選択（5MB以下）</p>
                       </div>
                     </div>
 
