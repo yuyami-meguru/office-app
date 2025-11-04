@@ -29,7 +29,7 @@ export default function AnnouncementsPage() {
     content: '',
     type: '全体' as AnnouncementType,
     targetDepartment: '',
-    targetUserId: '',
+    targetUserId: null as number | null,
     priority: '通常' as AnnouncementPriority,
   });
 
@@ -99,7 +99,7 @@ export default function AnnouncementsPage() {
         content: '',
         type: '全体',
         targetDepartment: '',
-        targetUserId: '',
+        targetUserId: null,
         priority: '通常',
       });
       setIsAdding(false);
@@ -188,7 +188,7 @@ export default function AnnouncementsPage() {
                         ...newAnnouncement, 
                         type: e.target.value as AnnouncementType,
                         targetDepartment: '',
-                        targetUserId: '',
+                        targetUserId: null,
                       })}
                       className="w-full border border-gray-300 rounded-lg px-4 py-2"
                     >
@@ -232,8 +232,8 @@ export default function AnnouncementsPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">対象ユーザー *</label>
                     <select
-                      value={newAnnouncement.targetUserId}
-                      onChange={(e) => setNewAnnouncement({ ...newAnnouncement, targetUserId: e.target.value })}
+                      value={newAnnouncement.targetUserId || ''}
+                      onChange={(e) => setNewAnnouncement({ ...newAnnouncement, targetUserId: e.target.value ? parseInt(e.target.value, 10) : null })}
                       className="w-full border border-gray-300 rounded-lg px-4 py-2"
                     >
                       <option value="">ユーザーを選択</option>
