@@ -1,0 +1,59 @@
+// このファイルを app/api/auth/google/route.ts として保存してください
+// Google OAuth認証の開始エンドポイント
+
+import { NextRequest, NextResponse } from 'next/server';
+import { google } from 'googleapis';
+
+const oauth2Client = new google.auth.OAuth2(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/api/auth/google/callback'
+);
+
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const code = searchParams.get('code');
+
+  if (!code) {
+    // 認証URLを生成してリダイレクト
+    const authUrl = oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: [
+        'https://www.googleapis.com/auth/calendar',
+        'https://www.googleapis.com/auth/calendar.events',
+      ],
+      prompt: 'consent', // リフレッシュトークンを取得するため
+    });
+
+    return NextResponse.redirect(authUrl);
+  }
+
+  // 認証コードをトークンに交換
+  try {
+    const { tokens } = await oauth2Client.getToken(code);
+    
+    // ここでトークンをデータベースに保存
+    // 実装例は lib/calendarSyncDB.ts を参照
+    
+    // 一時的にセッションストレージに保存（本番環境ではデータベースに保存）
+    const response = NextResponse.redirect(
+      new URL('/calendar-sync?success=true', request.url)
+    );
+    
+    // セッションストレージに保存（開発用、本番ではデータベースを使用）
+    response.cookies.set('google_tokens', JSON.stringify(tokens), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 365, // 1年
+    });
+
+    return response;
+  } catch (error: any) {
+    console.error('認証エラー:', error);
+    return NextResponse.redirect(
+      new URL('/calendar-sync?error=auth_failed', request.url)
+    );
+  }
+}
+

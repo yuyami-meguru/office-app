@@ -28,6 +28,11 @@ export async function getEvents(): Promise<Event[]> {
     .order('date', { ascending: true });
 
   if (error) {
+    // テーブルが存在しない場合は空配列を返す（エラーではない）
+    if (error.code === '42P01') return [];
+    // エラーオブジェクトが空の場合はスキップ
+    const errorKeys = Object.keys(error || {});
+    if (errorKeys.length === 0) return [];
     console.error('イベント取得エラー:', error);
     return [];
   }
@@ -126,6 +131,11 @@ export async function addEvent(event: Omit<Event, 'id'>): Promise<Event> {
     .single();
 
   if (error) {
+    // エラーオブジェクトが空の場合はスキップ
+    const errorKeys = Object.keys(error || {});
+    if (errorKeys.length === 0) {
+      throw new Error('イベントの追加に失敗しました');
+    }
     console.error('イベント追加エラー:', error);
     throw new Error('イベントの追加に失敗しました');
   }

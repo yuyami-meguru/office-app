@@ -149,7 +149,21 @@ export async function createAccount(username: string, password: string, name: st
 }
 
 // ログイン（グローバルユーザー認証）
-export async function login(username: string, password: string): Promise<GlobalUser | null> {
+export async function login(
+  username: string, 
+  password: string, 
+  twoFactorCode?: string,
+  ipAddress?: string
+): Promise<{ user: GlobalUser | null; requires2FA: boolean; error?: string }> {
+  // ブルートフォース対策: 最近の失敗試行をチェック
+  const { getRecentFailedAttempts, logLoginAttempt } = await import('./securityDB');
+  const recentFailures = await getRecentFailedAttempts(username, 15);
+  
+  if (recentFailures >= 5) {
+    await logLoginAttempt(username, false, 'ログイン試行回数が上限に達しました', ipAddress);
+    return { user: null, requires2FA: false, error: 'ログイン試行回数が上限に達しました。15分後に再試行してください。' };
+  }
+
   const { data, error } = await supabase
     .from('global_users')
     .select('*')
@@ -158,15 +172,41 @@ export async function login(username: string, password: string): Promise<GlobalU
     .single();
 
   if (error || !data) {
-    return null;
+    await logLoginAttempt(username, false, 'ユーザー名またはパスワードが正しくありません', ipAddress);
+    return { user: null, requires2FA: false };
   }
 
+  // 二段階認証チェック
+  const { getTwoFactorAuth } = await import('./securityDB');
+  const twoFactor = await getTwoFactorAuth(data.id);
+  
+  if (twoFactor && twoFactor.enabled) {
+    if (!twoFactorCode) {
+      await logLoginAttempt(username, false, '二段階認証コードが必要です', ipAddress);
+      return { user: null, requires2FA: true };
+    }
+    
+    // TOTPコードを検証
+    const { verifyTwoFactorCode } = await import('./securityDB');
+    const isValid = verifyTwoFactorCode(twoFactor.secret, twoFactorCode);
+    
+    if (!isValid) {
+      await logLoginAttempt(username, false, '二段階認証コードが無効です', ipAddress);
+      return { user: null, requires2FA: true, error: '認証コードが無効です' };
+    }
+  }
+
+  await logLoginAttempt(username, true, undefined, ipAddress);
+
   return {
-    id: data.id,
-    username: data.username,
-    password: data.password,
-    name: data.name || data.username || '', // nameカラムがない場合はusernameを使用
-    createdAt: data.created_at,
+    user: {
+      id: data.id,
+      username: data.username,
+      password: data.password,
+      name: data.name || data.username || '',
+      createdAt: data.created_at,
+    },
+    requires2FA: twoFactor?.enabled || false,
   };
 }
 

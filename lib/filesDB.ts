@@ -47,6 +47,11 @@ export async function getFolders(department?: string): Promise<FileFolder[]> {
   const { data, error } = await query;
 
   if (error) {
+    // テーブルが存在しない場合は空配列を返す（エラーではない）
+    if (error.code === '42P01') return [];
+    // エラーオブジェクトが空の場合はスキップ
+    const errorKeys = Object.keys(error || {});
+    if (errorKeys.length === 0) return [];
     console.error('フォルダ取得エラー:', error);
     return [];
   }
@@ -201,8 +206,8 @@ export async function uploadFile(
   };
 }
 
-// Supabase Storageにファイルをアップロード
-async function uploadFileToStorage(file: File, userId: number, officeId: string): Promise<string> {
+// Supabase Storageにファイルをアップロード（エクスポート用）
+export async function uploadFileToStorage(file: File, userId: number, officeId: string): Promise<string> {
   const fileExt = file.name.split('.').pop();
   const fileName = `${officeId}/${userId}_${Date.now()}.${fileExt}`;
 

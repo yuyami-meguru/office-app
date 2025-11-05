@@ -42,6 +42,11 @@ export async function getTasks(): Promise<Task[]> {
     .order('created_at', { ascending: false });
 
   if (error) {
+    // テーブルが存在しない場合は空配列を返す（エラーではない）
+    if (error.code === '42P01') return [];
+    // エラーオブジェクトが空の場合はスキップ
+    const errorKeys = Object.keys(error || {});
+    if (errorKeys.length === 0) return [];
     console.error('タスク取得エラー:', error);
     return [];
   }
@@ -89,6 +94,11 @@ export async function addTask(task: Omit<Task, 'id' | 'assignedToName' | 'create
     .single();
 
   if (error) {
+    // エラーオブジェクトが空の場合はスキップ
+    const errorKeys = Object.keys(error || {});
+    if (errorKeys.length === 0) {
+      throw new Error('タスクの追加に失敗しました');
+    }
     console.error('タスク追加エラー:', error);
     throw new Error('タスクの追加に失敗しました');
   }
@@ -150,7 +160,7 @@ export async function updateTaskAssignee(id: number, assignedToUserId: number | 
 }
 
 // タスクの全情報を更新
-export async function updateTask(id: number, task: Partial<Omit<Task, 'id' | 'assignedToName' | 'createdByName'>>): Promise<boolean> {
+export async function updateTask(id: number, task: Partial<Omit<Task, 'id' | 'assignedToName' | 'createdByName'>>): Promise<Task> {
   const updateData: any = {};
   if (task.title !== undefined) updateData.title = task.title;
   if (task.description !== undefined) updateData.description = task.description;
@@ -159,16 +169,33 @@ export async function updateTask(id: number, task: Partial<Omit<Task, 'id' | 'as
   if (task.dueDate !== undefined) updateData.due_date = task.dueDate || null;
   if (task.assignedToUserId !== undefined) updateData.assigned_to_user_id = task.assignedToUserId || null;
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('tasks')
     .update(updateData)
-    .eq('id', id);
+    .eq('id', id)
+    .select(`
+      *,
+      assigned_user:assigned_to_user_id (id, name, username),
+      created_user:created_by_user_id (id, name, username)
+    `)
+    .single();
 
   if (error) {
     throw new Error('タスクの更新に失敗しました');
   }
 
-  return true;
+  return {
+    id: data.id,
+    title: data.title,
+    description: data.description,
+    status: data.status as TaskStatus,
+    priority: data.priority as TaskPriority,
+    dueDate: data.due_date || '',
+    assignedToUserId: data.assigned_to_user_id || null,
+    assignedToName: data.assigned_user?.name || data.assigned_user?.username || null,
+    createdByUserId: data.created_by_user_id || null,
+    createdByName: data.created_user?.name || data.created_user?.username || null,
+  };
 }
 
 // タスクコメントを取得
@@ -183,6 +210,11 @@ export async function getTaskComments(taskId: number): Promise<TaskComment[]> {
     .order('created_at', { ascending: true });
 
   if (error) {
+    // テーブルが存在しない場合は空配列を返す（エラーではない）
+    if (error.code === '42P01') return [];
+    // エラーオブジェクトが空の場合はスキップ
+    const errorKeys = Object.keys(error || {});
+    if (errorKeys.length === 0) return [];
     console.error('コメント取得エラー:', error);
     return [];
   }
@@ -218,6 +250,11 @@ export async function addTaskComment(taskId: number, content: string): Promise<T
     .single();
 
   if (error) {
+    // エラーオブジェクトが空の場合はスキップ
+    const errorKeys = Object.keys(error || {});
+    if (errorKeys.length === 0) {
+      throw new Error('コメントの追加に失敗しました');
+    }
     console.error('コメント追加エラー:', error);
     throw new Error('コメントの追加に失敗しました');
   }

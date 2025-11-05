@@ -30,6 +30,11 @@ export async function getMembers(): Promise<Member[]> {
     .order('display_name', { ascending: true });
 
   if (error) {
+    // テーブルが存在しない場合は空配列を返す（エラーではない）
+    if (error.code === '42P01') return [];
+    // エラーオブジェクトが空の場合はスキップ
+    const errorKeys = Object.keys(error || {});
+    if (errorKeys.length === 0) return [];
     console.error('メンバー取得エラー:', error);
     return [];
   }
@@ -210,6 +215,11 @@ export async function getDepartments(): Promise<string[]> {
     .order('id', { ascending: true });
 
   if (error) {
+    // テーブルが存在しない場合は空配列を返す（エラーではない）
+    if (error.code === '42P01') return [];
+    // エラーオブジェクトが空の場合はスキップ
+    const errorKeys = Object.keys(error || {});
+    if (errorKeys.length === 0) return [];
     console.error('部署取得エラー:', error);
     return [];
   }

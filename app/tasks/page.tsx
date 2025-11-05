@@ -18,6 +18,25 @@ import {
   type TaskPriority,
   type TaskComment,
 } from '@/lib/tasksDB';
+import {
+  getTaskTags,
+  createTaskTag,
+  getTaskTagsForTask,
+  addTagToTask,
+  removeTagFromTask,
+  getTaskAttachments,
+  addTaskAttachment,
+  deleteTaskAttachment,
+  getTaskDependencies,
+  addTaskDependency,
+  removeTaskDependency,
+  getTaskTemplates,
+  createTaskFromTemplate,
+  type TaskTag,
+  type TaskAttachment,
+  type TaskDependency,
+  type TaskTemplate,
+} from '@/lib/tasksAdvancedDB';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +52,14 @@ export default function TasksPage() {
   const [expandedTaskId, setExpandedTaskId] = useState<number | null>(null);
   const [taskComments, setTaskComments] = useState<Record<number, TaskComment[]>>({});
   const [newComment, setNewComment] = useState<Record<number, string>>({});
+  const [taskTags, setTaskTags] = useState<TaskTag[]>([]);
+  const [taskTagsForTasks, setTaskTagsForTasks] = useState<Record<number, TaskTag[]>>({});
+  const [taskAttachments, setTaskAttachments] = useState<Record<number, TaskAttachment[]>>({});
+  const [taskDependencies, setTaskDependencies] = useState<Record<number, TaskDependency[]>>({});
+  const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([]);
+  const [showTagManager, setShowTagManager] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagColor, setNewTagColor] = useState('#3B82F6');
   
   const [newTask, setNewTask] = useState({
     title: '',
@@ -50,12 +77,15 @@ export default function TasksPage() {
   useEffect(() => {
     if (expandedTaskId) {
       loadTaskComments(expandedTaskId);
+      loadTaskDetails(expandedTaskId);
     }
   }, [expandedTaskId]);
 
   const loadData = async () => {
     await loadTasks();
     await loadMembers();
+    await loadTaskTags();
+    await loadTaskTemplates();
   };
 
   const loadTasks = async () => {
@@ -71,6 +101,103 @@ export default function TasksPage() {
   const loadTaskComments = async (taskId: number) => {
     const comments = await getTaskComments(taskId);
     setTaskComments(prev => ({ ...prev, [taskId]: comments }));
+  };
+
+  const loadTaskTags = async () => {
+    const data = await getTaskTags();
+    setTaskTags(data);
+  };
+
+  const loadTaskTemplates = async () => {
+    const data = await getTaskTemplates();
+    setTaskTemplates(data);
+  };
+
+  const loadTaskDetails = async (taskId: number) => {
+    const [tags, attachments, dependencies] = await Promise.all([
+      getTaskTagsForTask(taskId),
+      getTaskAttachments(taskId),
+      getTaskDependencies(taskId),
+    ]);
+    setTaskTagsForTasks(prev => ({ ...prev, [taskId]: tags }));
+    setTaskAttachments(prev => ({ ...prev, [taskId]: attachments }));
+    setTaskDependencies(prev => ({ ...prev, [taskId]: dependencies }));
+  };
+
+  const handleCreateTag = async () => {
+    if (!newTagName.trim()) return;
+    try {
+      await createTaskTag(newTagName, newTagColor);
+      setNewTagName('');
+      setNewTagColor('#3B82F6');
+      await loadTaskTags();
+    } catch (err) {
+      alert('タグの作成に失敗しました');
+    }
+  };
+
+  const handleAddTagToTask = async (taskId: number, tagId: number) => {
+    try {
+      await addTagToTask(taskId, tagId);
+      await loadTaskDetails(taskId);
+    } catch (err) {
+      alert('タグの追加に失敗しました');
+    }
+  };
+
+  const handleRemoveTagFromTask = async (taskId: number, tagId: number) => {
+    try {
+      await removeTagFromTask(taskId, tagId);
+      await loadTaskDetails(taskId);
+    } catch (err) {
+      alert('タグの削除に失敗しました');
+    }
+  };
+
+  const handleAddAttachment = async (taskId: number, file: File) => {
+    try {
+      await addTaskAttachment(taskId, file);
+      await loadTaskDetails(taskId);
+    } catch (err: any) {
+      alert(err.message || '添付ファイルの追加に失敗しました');
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentId: number, taskId: number) => {
+    try {
+      await deleteTaskAttachment(attachmentId);
+      await loadTaskDetails(taskId);
+    } catch (err) {
+      alert('添付ファイルの削除に失敗しました');
+    }
+  };
+
+  const handleAddDependency = async (taskId: number, dependsOnTaskId: number) => {
+    try {
+      await addTaskDependency(taskId, dependsOnTaskId);
+      await loadTaskDetails(taskId);
+    } catch (err: any) {
+      alert(err.message || '依存関係の追加に失敗しました');
+    }
+  };
+
+  const handleRemoveDependency = async (dependencyId: number, taskId: number) => {
+    try {
+      await removeTaskDependency(dependencyId);
+      await loadTaskDetails(taskId);
+    } catch (err) {
+      alert('依存関係の削除に失敗しました');
+    }
+  };
+
+  const handleCreateFromTemplate = async (templateId: number) => {
+    try {
+      await createTaskFromTemplate(templateId);
+      await loadTasks();
+      setIsAdding(false);
+    } catch (err: any) {
+      alert(err.message || 'タスクの作成に失敗しました');
+    }
   };
 
   const handleAddTask = async () => {
@@ -221,12 +348,20 @@ export default function TasksPage() {
               <h1 className="text-3xl font-semibold text-gray-900 mb-2">タスク管理</h1>
               <p className="text-gray-600">やることリストを効率的に管理</p>
             </div>
-            <button
-              onClick={() => setIsAdding(!isAdding)}
-              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-all font-semibold"
-            >
-              {isAdding ? 'キャンセル' : '+ 新規タスク'}
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowTagManager(!showTagManager)}
+                className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-all font-semibold"
+              >
+                タグ管理
+              </button>
+              <button
+                onClick={() => setIsAdding(!isAdding)}
+                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-all font-semibold"
+              >
+                {isAdding ? 'キャンセル' : '+ 新規タスク'}
+              </button>
+            </div>
           </div>
 
           {/* 検索・フィルタ */}
@@ -292,10 +427,77 @@ export default function TasksPage() {
             </div>
           </div>
 
+          {/* タグ管理 */}
+          {showTagManager && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">タグ管理</h2>
+                <button
+                  onClick={() => setShowTagManager(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  閉じる
+                </button>
+              </div>
+              <div className="flex gap-2 mb-4">
+                <input
+                  type="text"
+                  value={newTagName}
+                  onChange={(e) => setNewTagName(e.target.value)}
+                  placeholder="タグ名"
+                  className="flex-1 border border-gray-300 rounded-lg px-4 py-2"
+                />
+                <input
+                  type="color"
+                  value={newTagColor}
+                  onChange={(e) => setNewTagColor(e.target.value)}
+                  className="w-20 h-10 border border-gray-300 rounded"
+                />
+                <button
+                  onClick={handleCreateTag}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                >
+                  作成
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {taskTags.map(tag => (
+                  <span
+                    key={tag.id}
+                    className="px-3 py-1 rounded-full text-sm font-medium"
+                    style={{ backgroundColor: tag.color + '20', color: tag.color }}
+                  >
+                    {tag.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* 新規追加フォーム */}
           {isAdding && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-              <h2 className="text-xl font-semibold mb-4">新しいタスクを追加</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">新しいタスクを追加</h2>
+                {taskTemplates.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">テンプレートから:</span>
+                    <select
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          handleCreateFromTemplate(parseInt(e.target.value, 10));
+                        }
+                      }}
+                      className="border border-gray-300 rounded px-3 py-1 text-sm"
+                    >
+                      <option value="">選択...</option>
+                      {taskTemplates.map(tmpl => (
+                        <option key={tmpl.id} value={tmpl.id}>{tmpl.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">タスク名 *</label>
@@ -456,10 +658,128 @@ export default function TasksPage() {
                   </button>
                 </div>
 
-                {/* コメントセクション */}
+                {/* 詳細セクション */}
                 {expandedTaskId === task.id && (
-                  <div className="border-t border-gray-200 pt-4 mt-4">
-                    <h4 className="font-semibold text-gray-900 mb-3">コメント</h4>
+                  <div className="border-t border-gray-200 pt-4 mt-4 space-y-4">
+                    {/* タグ */}
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-2">タグ</h4>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {taskTagsForTasks[task.id]?.map(tag => (
+                          <span
+                            key={tag.id}
+                            className="px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2"
+                            style={{ backgroundColor: tag.color + '20', color: tag.color }}
+                          >
+                            {tag.name}
+                            <button
+                              onClick={() => handleRemoveTagFromTask(task.id, tag.id)}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleAddTagToTask(task.id, parseInt(e.target.value, 10));
+                            e.target.value = '';
+                          }
+                        }}
+                        className="border border-gray-300 rounded px-3 py-1 text-sm"
+                      >
+                        <option value="">タグを追加...</option>
+                        {taskTags
+                          .filter(tag => !taskTagsForTasks[task.id]?.some(t => t.id === tag.id))
+                          .map(tag => (
+                            <option key={tag.id} value={tag.id}>{tag.name}</option>
+                          ))}
+                      </select>
+                    </div>
+
+                    {/* 依存関係 */}
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-2">依存関係</h4>
+                      <div className="space-y-2 mb-2">
+                        {taskDependencies[task.id]?.map(dep => (
+                          <div key={dep.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                            <span className="text-sm text-gray-700">{dep.dependsOnTaskTitle}</span>
+                            <button
+                              onClick={() => handleRemoveDependency(dep.id, task.id)}
+                              className="text-red-600 hover:text-red-800 text-sm"
+                            >
+                              削除
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleAddDependency(task.id, parseInt(e.target.value, 10));
+                            e.target.value = '';
+                          }
+                        }}
+                        className="border border-gray-300 rounded px-3 py-1 text-sm"
+                      >
+                        <option value="">依存タスクを追加...</option>
+                        {tasks
+                          .filter(t => t.id !== task.id)
+                          .map(t => (
+                            <option key={t.id} value={t.id}>{t.title}</option>
+                          ))}
+                      </select>
+                    </div>
+
+                    {/* 添付ファイル */}
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-2">添付ファイル</h4>
+                      <div className="space-y-2 mb-2">
+                        {taskAttachments[task.id]?.map(att => (
+                          <div key={att.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-gray-700">{att.fileName}</span>
+                              <span className="text-xs text-gray-500">
+                                ({(att.fileSize / 1024).toFixed(1)} KB)
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={att.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 text-sm"
+                              >
+                                開く
+                              </a>
+                              <button
+                                onClick={() => handleDeleteAttachment(att.id, task.id)}
+                                className="text-red-600 hover:text-red-800 text-sm"
+                              >
+                                削除
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <input
+                        type="file"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleAddAttachment(task.id, file);
+                            e.target.value = '';
+                          }
+                        }}
+                        className="text-sm"
+                      />
+                    </div>
+
+                    {/* コメント */}
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-3">コメント</h4>
                     <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
                       {taskComments[task.id]?.map(comment => (
                         <div key={comment.id} className="bg-gray-50 rounded-lg p-3">
@@ -490,6 +810,7 @@ export default function TasksPage() {
                       >
                         投稿
                       </button>
+                    </div>
                     </div>
                   </div>
                 )}

@@ -49,6 +49,11 @@ export async function getAnnouncements(): Promise<Announcement[]> {
     .order('created_at', { ascending: false });
 
   if (error) {
+    // テーブルが存在しない場合は空配列を返す（エラーではない）
+    if (error.code === '42P01') return [];
+    // エラーオブジェクトが空の場合はスキップ
+    const errorKeys = Object.keys(error || {});
+    if (errorKeys.length === 0) return [];
     console.error('お知らせ取得エラー:', error);
     return [];
   }

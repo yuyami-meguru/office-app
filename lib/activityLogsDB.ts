@@ -29,6 +29,11 @@ export async function getActivityLogs(limit: number = 50): Promise<ActivityLog[]
     .limit(limit);
 
   if (error) {
+    // テーブルが存在しない場合は空配列を返す（エラーではない）
+    if (error.code === '42P01') return [];
+    // エラーオブジェクトが空の場合はスキップ
+    const errorKeys = Object.keys(error || {});
+    if (errorKeys.length === 0) return [];
     console.error('活動履歴取得エラー:', error);
     return [];
   }

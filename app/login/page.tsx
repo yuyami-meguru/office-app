@@ -11,6 +11,8 @@ export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [requires2FA, setRequires2FA] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
 
@@ -40,13 +42,26 @@ export default function LoginPage() {
         router.push('/');
       } else {
         // ログイン
-        const user = await login(username, password);
-        if (user) {
-          setCurrentGlobalUser(user);
+        const result = await login(username, password, twoFactorCode || undefined);
+        if (result.error) {
+          setError(result.error);
+          setPassword('');
+          setTwoFactorCode('');
+          return;
+        }
+        if (result.requires2FA && !twoFactorCode) {
+          setRequires2FA(true);
+          setError('二段階認証コードを入力してください');
+          return;
+        }
+        if (result.user) {
+          setCurrentGlobalUser(result.user);
           router.push('/');
         } else {
           setError('ユーザー名またはパスワードが間違っています');
           setPassword('');
+          setTwoFactorCode('');
+          setRequires2FA(false);
         }
       }
     } catch (err) {
@@ -84,6 +99,8 @@ export default function LoginPage() {
                 setUsername('');
                 setPassword('');
                 setName('');
+                setTwoFactorCode('');
+                setRequires2FA(false);
               }}
               className={`flex-1 py-2 rounded-md font-semibold transition-all ${
                 !isSignUp
@@ -100,6 +117,8 @@ export default function LoginPage() {
                 setUsername('');
                 setPassword('');
                 setName('');
+                setTwoFactorCode('');
+                setRequires2FA(false);
               }}
               className={`flex-1 py-2 rounded-md font-semibold transition-all ${
                 isSignUp
@@ -158,12 +177,36 @@ export default function LoginPage() {
                 onChange={(e) => {
                   setPassword(e.target.value);
                   setError('');
+                  setRequires2FA(false);
                 }}
                 className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                 placeholder="パスワードを入力（6文字以上）"
                 required
               />
             </div>
+
+            {requires2FA && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  二段階認証コード
+                </label>
+                <input
+                  type="text"
+                  value={twoFactorCode}
+                  onChange={(e) => {
+                    setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6));
+                    setError('');
+                  }}
+                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                  placeholder="6桁の認証コード"
+                  maxLength={6}
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  認証アプリ（Google Authenticatorなど）で表示される6桁のコードを入力してください
+                </p>
+              </div>
+            )}
 
             {error && (
               <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">

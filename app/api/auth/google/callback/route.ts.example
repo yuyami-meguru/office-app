@@ -1,0 +1,4 @@
+// このファイルは app/api/auth/google/route.ts のGETハンドラーで処理されるため、
+// 別途作成する必要はありません。
+// リダイレクトURIは /api/auth/google に設定してください。
+

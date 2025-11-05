@@ -23,6 +23,7 @@ export default function DiscordLayout({ children }: DiscordLayoutProps) {
   const [myDepartments, setMyDepartments] = useState<string[]>([]); // 自分の所属部署
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -80,6 +81,7 @@ export default function DiscordLayout({ children }: DiscordLayoutProps) {
       const myMembership = await getMyMembership();
       if (myMembership) {
         setMyDepartments(myMembership.departments || []);
+        setIsAdmin(myMembership.userRole === 'admin');
         
         // URLから部署を取得（例: /office/department/歌い手）
         const deptMatch = pathname.match(/\/office\/department\/(.+)$/);
@@ -91,10 +93,12 @@ export default function DiscordLayout({ children }: DiscordLayoutProps) {
         }
       } else {
         setMyDepartments([]);
+        setIsAdmin(false);
       }
     } catch (err) {
       console.error('部署読み込みエラー:', err);
       setMyDepartments([]);
+      setIsAdmin(false);
     }
   };
 
@@ -278,6 +282,217 @@ export default function DiscordLayout({ children }: DiscordLayoutProps) {
               </svg>
               <span>活動履歴</span>
             </a>
+            
+            {/* 検索リンク */}
+            <a
+              href="/search"
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors mb-2 ${
+                pathname === '/search'
+                  ? 'bg-indigo-50 text-indigo-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <span>検索</span>
+            </a>
+            
+            {/* プロジェクト管理リンク */}
+            <a
+              href="/projects"
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors mb-2 ${
+                pathname === '/projects'
+                  ? 'bg-indigo-50 text-indigo-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <span>プロジェクト</span>
+            </a>
+            
+            {/* チャットリンク */}
+            <a
+              href="/chat"
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors mb-2 ${
+                pathname === '/chat'
+                  ? 'bg-indigo-50 text-indigo-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <span>チャット</span>
+            </a>
+            
+            {/* 承認ワークフローリンク */}
+            <a
+              href="/workflow"
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors mb-2 ${
+                pathname === '/workflow'
+                  ? 'bg-indigo-50 text-indigo-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>承認</span>
+            </a>
+            
+            {/* 監査ログリンク（管理者のみ） */}
+            {isAdmin && (
+              <a
+                href="/audit"
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors mb-2 ${
+                  pathname === '/audit'
+                    ? 'bg-indigo-50 text-indigo-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>監査ログ</span>
+              </a>
+            )}
+            
+            {/* 権限管理リンク（管理者のみ） */}
+            {isAdmin && (
+              <a
+                href="/permissions"
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors mb-2 ${
+                  pathname === '/permissions'
+                    ? 'bg-indigo-50 text-indigo-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span>権限管理</span>
+              </a>
+            )}
+            
+            {/* セキュリティ設定リンク（管理者のみ） */}
+            {isAdmin && (
+              <a
+                href="/security"
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors mb-2 ${
+                  pathname === '/security'
+                    ? 'bg-indigo-50 text-indigo-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                <span>セキュリティ</span>
+              </a>
+            )}
+            
+            {/* Googleカレンダー同期リンク */}
+            <a
+              href="/calendar-sync"
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors mb-2 ${
+                pathname === '/calendar-sync'
+                  ? 'bg-indigo-50 text-indigo-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span>カレンダー同期</span>
+            </a>
+            
+            {/* Webhook設定リンク（管理者のみ） */}
+            {isAdmin && (
+              <a
+                href="/webhooks"
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors mb-2 ${
+                  pathname === '/webhooks'
+                    ? 'bg-indigo-50 text-indigo-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <span>Webhook</span>
+              </a>
+            )}
+            
+            {/* バックアップ設定リンク（管理者のみ） */}
+            {isAdmin && (
+              <a
+                href="/backup"
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors mb-2 ${
+                  pathname === '/backup'
+                    ? 'bg-indigo-50 text-indigo-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
+                <span>バックアップ</span>
+              </a>
+            )}
+            
+            {/* 運用可観測性リンク（管理者のみ） */}
+            {isAdmin && (
+              <a
+                href="/observability"
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors mb-2 ${
+                  pathname === '/observability'
+                    ? 'bg-indigo-50 text-indigo-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <span>運用可観測性</span>
+              </a>
+            )}
+            
+            {/* ストレージポリシーリンク（管理者のみ） */}
+            {isAdmin && (
+              <a
+                href="/storage-policy"
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors mb-2 ${
+                  pathname === '/storage-policy'
+                    ? 'bg-indigo-50 text-indigo-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                </svg>
+                <span>ストレージポリシー</span>
+              </a>
+            )}
+            
+            {/* サブスクリプションリンク（一時的に無効化） */}
+            {false && isAdmin && (
+              <a
+                href="/subscription"
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors mb-2 ${
+                  pathname === '/subscription'
+                    ? 'bg-indigo-50 text-indigo-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+                <span>サブスクリプション</span>
+              </a>
+            )}
             
             <div className="h-px bg-gray-200 my-2"></div>
             
